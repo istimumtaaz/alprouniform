@@ -240,13 +240,17 @@
         document.getElementById('app').innerHTML = `
           <div class="card p-4 shadow-sm border-0 bg-white mb-4">
             <h5 class="fw-bold text-dark mb-2"><i class="bi bi-file-earmark-spreadsheet-fill text-success me-2"></i>Upload Request Seragam via CSV</h5>
-            <p class="text-muted small">Hemat waktu alokasi! Masukkan template CSV data karyawan baru langsung tanpa ketik manual satu-satu.</p>
+            <p class="text-muted small">Unduh Template CSV, Isi data dengan benar lalu upload file CSV data karyawan baru .</p>
+            
             <div class="row g-3 align-items-center mt-1">
               <div class="col-auto">
                 <input type="file" id="csvFilePicker" accept=".csv" class="form-control form-control-sm">
               </div>
               <div class="col-auto">
-                <button class="btn btn-sm btn-primary px-3" onclick="eksekusiUploadCSV()"><i class="bi bi-cloud-upload me-1"></i> Jalankan Upload</button>
+                <button class="btn btn-sm btn-primary px-3" onclick="eksekusiUploadCSV()"><i class="bi bi-cloud-upload me-1"></i> Upload File</button>
+              </div>
+              <div class="col-auto">
+                <button class="btn btn-sm btn-outline-success px-3" onclick="downloadTemplateCSV()"><i class="bi bi-download me-1"></i> Download Template CSV</button>
               </div>
             </div>
           </div>
@@ -396,6 +400,38 @@
     window.onload = function() {
       renderDashboard();
     };
+// ==========================================
+    // FUNGSI OTOMATIS DOWNLOAD TEMPLATE CSV CONTOH
+    // ==========================================
+    function downloadTemplateCSV() {
+      // 1. Kita tentukan baris pertama (Judul Kolom) sesuai laci Supabase
+      const header = ["nama_karyawan", "nip", "posisi_kerja", "departemen_cabang", "jenis_request", "gender_karyawan", "ukuran_jas", "ukuran_kemeja", "ukuran_kaos"];
+      
+      // 2. Kita kasih contoh isi datanya 2 baris biar mereka paham cara isinya
+      const dataContoh = [
+        ["Ahmad Fauzi", "10021", "Apoteker", "Cabang Menteng", "Karyawan Baru", "Pria", "L", "XL", "L"],
+        ["Siti Aminah", "10022", "Health Advisor", "HQ Kantor", "Karyawan Baru", "Wanita", "NULL", "M", "S"]
+      ];
+      
+      // 3. Satukan header dan data contoh menjadi format teks CSV yang dipisah koma
+      let kontenCsv = header.join(",") + "\n";
+      dataContoh.forEach(baris => {
+        kontenCsv += baris.join(",") + "\n";
+      });
+      
+      // 4. Proses gaib mengubah teks menjadi file unduhan di browser
+      const blob = new Blob([kontenCsv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute("href", url);
+      link.setAttribute("download", "template_request_seragam_alpro.csv"); // Nama file saat diunduh
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   </script>
 </body>
 </html>
