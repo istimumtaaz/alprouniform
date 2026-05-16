@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ALPRO UNIFORM - Final System</title>
+  
+  <!-- Library CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  
+  <style>
+    :root {
+      --primary-color: #0d6efd;
+      --sidebar-bg: #1e293b;
+      --content-bg: #f1f5f9;
+      --accent-color: #38bdf8;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--content-bg);
+      overflow-x: hidden;
+    }
+
+    /* SIDEBAR STYLING */
+    #sidebar {
+      min-width: 260px;
+      max-width: 260px;
+      min-height: 100vh;
+      background: var(--sidebar-bg);
+      color: #fff;
+      transition: all 0.3s;
+      position: fixed;
+      z-index: 1000;
+      box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+    }
+
+    #sidebar.active { margin-left: -260px; }
+
+    #content {
+      width: 100%;
+      padding-left: 260px;
+      min-height: 100vh;
+      transition: all 0.3s;
+    }
+
+    #content.active { padding-left: 0; }
+
+    .nav-link {
+      color: rgba(255,255,255,0.7);
+      padding: 12px 20px;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-left: 4px solid transparent;
+      cursor: pointer;
+      text-decoration: none;
+      transition: 0.2s;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: #fff;
+      background: rgba(255,255,255,0.05);
+      border-left-color: var(--accent-color);
+    }
+
+    .submenu {
+      background: rgba(0,0,0,0.15);
+      padding-left: 15px;
+    }
+
+    /* UI COMPONENTS */
+    .loader-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(255,255,255,0.8);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      margin-bottom: 1.5rem;
+    }
+
+    .table-sm { font-size: 0.85rem; }
+
+    /* MOBILE RESPONSIVE */
+    @media (max-width: 768px) {
+      #sidebar { margin-left: -260px; }
+      #sidebar.active { margin-left: 0; }
+      #content { padding-left: 0; }
+      #content.active { padding-left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOADING SPINNER -->
+  <div class="loader-overlay" id="loader">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <!-- SIDEBAR NAVIGATION -->
+  <nav id="sidebar">
+    <div class="p-4 border-bottom border-secondary text-center">
+      <h4 class="fw-bold text-info mb-0"><i class="bi bi-shield-shaded"></i> ALPRO UNIFORM</h4>
+      <small class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 1px;">Uniform Management</small>
+    </div>
+    
+    <div class="py-3">
+      <ul class="nav flex-column">
+        <!-- Dashboard -->
+        <li class="nav-item">
+          <a class="nav-link active" onclick="loadPage('home', this)">
+            <span><i class="bi bi-speedometer2 me-2"></i> Dashboard</span>
+          </a>
+        </li>
+        
+        <!-- Seragam In -->
+        <li class="nav-item">
+          <a href="#subIn" data-bs-toggle="collapse" class="nav-link">
+            <span><i class="bi bi-box-arrow-in-right me-2"></i> Seragam In</span>
+            <i class="bi bi-chevron-down small"></i>
+          </a>
+          <div class="collapse submenu" id="subIn">
+            <a class="nav-link py-2" onclick="loadPage('in-vendor', this)">Vendor / Baru</a>
+            <a class="nav-link py-2" onclick="loadPage('in-resign', this)">Karyawan Resign</a>
+            <a class="nav-link py-2" onclick="loadPage('in-return', this)">Pengembalian</a>
+          </div>
+        </li>
+
+        <!-- Request Seragam -->
+        <li class="nav-item">
+          <a href="#subReq" data-bs-toggle="collapse" class="nav-link">
+            <span><i class="bi bi-clipboard-plus me-2"></i> Request Seragam</span>
+            <i class="bi bi-chevron-down small"></i>
+          </a>
+          <div class="collapse submenu" id="subReq">
+            <a class="nav-link py-2" onclick="loadPage('req-new', this)">New Hire</a>
+            <a class="nav-link py-2" onclick="loadPage('req-existing', this)">Existing</a>
+          </div>
+        </li>
+
+        <!-- Seragam Out -->
+        <li class="nav-item">
+          <a href="#subOut" data-bs-toggle="collapse" class="nav-link">
+            <span><i class="bi bi-box-arrow-up-right me-2"></i> Seragam Out</span>
+            <i class="bi bi-chevron-down small"></i>
+          </a>
+          <div class="collapse submenu" id="subOut">
+            <a class="nav-link py-2" onclick="loadPage('out-alokasi', this)">Alokasi (Kirim)</a>
+            <a class="nav-link py-2" onclick="loadPage('out-pinjam', this)">Peminjaman</a>
+          </div>
+        </li>
+
+        <li class="nav-item border-top border-secondary mt-2 pt-2">
+          <a class="nav-link" onclick="loadPage('riwayat', this)">
+            <span><i class="bi bi-clock-history me-2"></i> Riwayat Transaksi</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link" onclick="loadPage('master', this)">
+            <span><i class="bi bi-database-check me-2"></i> Master Stok</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT AREA -->
+  <div id="content">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-4">
+      <button class="btn btn-light border" id="sidebarToggle">
+        <i class="bi bi-list"></i>
+      </button>
+      <div class="ms-auto d-flex align-items-center">
+        <div class="text-end me-3 d-none d-sm-block">
+          <div class="fw-bold small text-primary">OSS DEPARTMENT</div>
+          <div class="text-muted" style="font-size: 11px;">ALPRO UNIFORM System</div>
+        </div>
+        <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 38px; height: 38px;">
+          <i class="bi bi-person-circle"></i>
+        </div>
+      </div>
+    </nav>
+
+    <div id="app" class="container-fluid p-4">
+      <!-- KONTEN DINAMIS DIMUAT DI SINI -->
+    </div>
+  </div>
+
+  <!-- SCRIPT LIBRARIES -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+  /**
+   * GLOBAL VARIABLES
+   */
+  let dropdownData = { names: [], genders: [], sizes: [] };
+  let currentHistoryData = [];
+
+  /**
+   * 1. INISIALISASI & EVENT LISTENERS
+   */
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log("Sistem ALPRO Memuat...");
+    initAppData();
+    loadPage('home');
+    
+    // Toggle Sidebar
+    document.getElementById('sidebarToggle').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('active');
+      document.getElementById('content').classList.toggle('active');
+    });
+  });
+
+  function initAppData() {
+    showLoader(true);
+    google.script.run.withSuccessHandler(data => {
+      dropdownData = data;
+      console.log("Dropdown Dinamis Terisi");
+      showLoader(false);
+    }).getDropdownData();
+  }
+
+  /**
+   * 2. UTILITY FUNCTIONS
+   */
+  function showLoader(show) { document.getElementById('loader').style.display = show ? 'flex' : 'none'; }
+  function showToast(title, text, icon) { Swal.fire({ title: title, text: text, icon: icon, timer: 2000, showConfirmButton: false }); }
+
+  // Fungsi pembuat opsi select otomatis
+  function getOptions(type) {
+    const list = dropdownData[type] || [];
+    return list.map(item => `<option value="${item}">${item}</option>`).join('');
+  }
+
+  /**
+   * 3. SPA ROUTER (LOAD PAGE)
+   */
+  function loadPage(page, element) {
+    console.log("Navigasi ke: " + page);
+    const app = document.getElementById('app');
+    showLoader(true);
+
+    if(element) {
+      document.querySelectorAll('.nav-link').forEach(nav => nav.classList.remove('active'));
+      element.classList.add('active');
+    }
+
+    setTimeout(() => {
+      try {
+        switch(page) {
+          case 'home': renderHome(); break;
+          case 'in-vendor': renderVendorForm(); break;
+          case 'in-resign': renderResignForm(); break;
+          case 'in-return': loadReturnPage(); break;
+          case 'req-new': renderRequestForm('New Hire'); break;
+          case 'req-existing': renderRequestForm('Existing'); break;
+          case 'out-alokasi': loadAllocationPage(); break;
+          case 'out-pinjam': renderPeminjamanForm(); break;
+          case 'riwayat': loadRiwayatPage(); break;
+          case 'master': loadMasterPage(); break;
+          default: app.innerHTML = `<div class="p-5 text-center card"><h4>Halaman ${page} Sedang Dikembangkan</h4></div>`;
+        }
+      } catch (err) {
+        console.error(err);
+        app.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+      }
+      showLoader(false);
+    }, 300);
+  }
+
+  /**
+   * 4. TEMPLATE DASHBOARD & FORMS
+   */
+
+  /**
+ * FRONTEND: Menampilkan Dashboard dengan Data Riil
+ * Lokasi: Index.html (Bagian Script)
+ */
+function renderHome() {
+  console.log("Memuat Dashboard Riil...");
+  const app = document.getElementById('app');
+
+  // 1. Tampilan awal (Template Kartu dengan ID)
+  app.innerHTML = `
+    <div class="row g-4">
+      <div class="col-12 d-flex justify-content-between align-items-center">
+        <h3 class="fw-bold">Dashboard Overview</h3>
+        <button class="btn btn-sm btn-outline-secondary" onclick="renderHome()">
+          <i class="bi bi-arrow-clockwise"></i> Refresh Data
+        </button>
+      </div>
+      
+      <div class="col-md-3">
+        <div class="card p-4 bg-primary text-white border-0 shadow-sm position-relative overflow-hidden">
+          <h6 class="opacity-75 small fw-bold text-uppercase">Total Stok Layak</h6>
+          <h2 class="fw-bold mb-0" id="total-stok">...</h2>
+          <i class="bi bi-box-seam position-absolute end-0 bottom-0 m-3 opacity-25" style="font-size: 2.5rem;"></i>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="card p-4 bg-success text-white border-0 shadow-sm position-relative overflow-hidden">
+          <h6 class="opacity-75 small fw-bold text-uppercase">Request Pending</h6>
+          <h2 class="fw-bold mb-0" id="total-pending">...</h2>
+          <i class="bi bi-clipboard-data position-absolute end-0 bottom-0 m-3 opacity-25" style="font-size: 2.5rem;"></i>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="card p-4 bg-warning text-dark border-0 shadow-sm position-relative overflow-hidden">
+          <h6 class="opacity-75 small fw-bold text-uppercase">Peminjaman Aktif</h6>
+          <h2 class="fw-bold mb-0" id="total-pinjam">...</h2>
+          <i class="bi bi-person-video2 position-absolute end-0 bottom-0 m-3 opacity-25" style="font-size: 2.5rem;"></i>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="card p-4 bg-danger text-white border-0 shadow-sm position-relative overflow-hidden">
+          <h6 class="opacity-75 small fw-bold text-uppercase">Varian Stok Kritis</h6>
+          <h2 class="fw-bold mb-0" id="total-kritis">...</h2>
+          <i class="bi bi-exclamation-triangle position-absolute end-0 bottom-0 m-3 opacity-25" style="font-size: 2.5rem;"></i>
+        </div>
+      </div>
+    </div>`;
+
+  // 2. Ambil data dari backend
+  google.script.run
+    .withSuccessHandler(stats => {
+      // Masukkan angka riil ke elemen berdasarkan ID
+      document.getElementById('total-stok').innerText = stats.stok.toLocaleString();
+      document.getElementById('total-pending').innerText = stats.pending;
+      document.getElementById('total-pinjam').innerText = stats.pinjam;
+      document.getElementById('total-kritis').innerText = stats.kritis;
+    })
+    .getDashboardStats();
+}
+
+  function renderVendorForm() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="card p-4 shadow-sm">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold text-primary mb-0"><i class="bi bi-truck me-2"></i>Stok Masuk: Vendor (Bulk)</h4>
+        <div class="d-flex gap-2">
+           <input type="text" id="vSearch" class="form-control form-control-sm" placeholder="Cari Seragam..." onkeyup="filterVendorTable()">
+        </div>
+      </div>
+
+      <div class="bg-light p-3 rounded mb-4">
+        <label class="form-label fw-bold">Nama Sumber / Vendor</label>
+        <input type="text" id="v_sumber" class="form-control" placeholder="Contoh: PT. Mulia Garment" required>
+      </div>
+
+      <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+        <table class="table table-sm table-hover border align-middle" id="vendorBulkTable">
+          <thead class="table-dark sticky-top">
+            <tr>
+              <th>Kode</th>
+              <th>Nama Seragam</th>
+              <th>Gender</th>
+              <th>Size</th>
+              <th width="150px">Jumlah Datang</th>
+            </tr>
+          </thead>
+          <tbody id="vBulkBody">
+            <tr><td colspan="5" class="text-center p-5"><div class="spinner-border text-primary"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 text-end">
+        <button type="button" class="btn btn-primary btn-lg px-5" onclick="submitBulkVendor()">
+          <i class="bi bi-cloud-arrow-up me-2"></i>Simpan Semua Data
+        </button>
+      </div>
+    </div>`;
+
+  // Ambil data dari Master Stok
+  google.script.run.withSuccessHandler(data => {
+    const tbody = document.getElementById('vBulkBody');
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center">Data Master tidak ditemukan.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.map((r, index) => `
+      <tr class="v-row">
+        <td class="v-kode small fw-bold">${r[0]}</td>
+        <td class="v-nama">${r[1]}</td>
+        <td class="v-gender">${r[2]}</td>
+        <td class="v-size">${r[3]}</td>
+        <td>
+          <input type="number" class="form-control form-control-sm v-qty" 
+                 min="0" placeholder="0" data-index="${index}">
+        </td>
+      </tr>
+    `).join('');
+  }).getMasterStokData();
+}
+// Fungsi Pencarian Cepat di Tabel
+function filterVendorTable() {
+  const input = document.getElementById("vSearch").value.toUpperCase();
+  const rows = document.querySelectorAll("#vBulkBody tr");
+  
+  rows.forEach(row => {
+    const text = row.innerText.toUpperCase();
+    row.style.display = text.indexOf(input) > -1 ? "" : "none";
+  });
+}
+
+// Fungsi Submit Data Bulk
+function submitBulkVendor() {
+  const vendorName = document.getElementById('v_sumber').value;
+  if (!vendorName) {
+    showToast('Peringatan', 'Harap isi nama vendor/sumber!', 'warning');
+    return;
+  }
+
+  const rows = document.querySelectorAll('.v-row');
+  const payload = [];
+
+  rows.forEach(row => {
+    const qty = parseInt(row.querySelector('.v-qty').value);
+    if (qty > 0) {
+      payload.push({
+        kode: row.querySelector('.v-kode').innerText,
+        nama: row.querySelector('.v-nama').innerText,
+        gender: row.querySelector('.v-gender').innerText,
+        size: row.querySelector('.v-size').innerText,
+        qty: qty
+      });
+    }
+  });
+
+  if (payload.length === 0) {
+    showToast('Info', 'Tidak ada jumlah yang diisi (Qty > 0)', 'info');
+    return;
+  }
+
+  // Konfirmasi Ringkasan dengan SweetAlert2
+  Swal.fire({
+    title: 'Konfirmasi Simpan',
+    html: `Anda akan menambah stok untuk <b>${payload.length} varian</b> seragam.<br>Vendor: <b>${vendorName}</b>`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Ya, Simpan Stok',
+    cancelButtonText: 'Batal'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      showLoader(true);
+      google.script.run.withSuccessHandler(res => {
+        showLoader(false);
+        showToast('Sukses', res, 'success');
+        loadPage('home');
+      }).processBulkVendorIn(vendorName, payload);
+    }
+  });
+}
+
+  // FORM PEMINJAMAN (MULTIFILE)
+  function renderPeminjamanForm() {
+    document.getElementById('app').innerHTML = `
+      <div class="card p-4">
+        <h4 class="fw-bold mb-4 text-warning"><i class="bi bi-person-video2 me-2"></i>Peminjaman Seragam</h4>
+        <form id="pForm">
+          <div class="row g-2 mb-3 bg-light p-3 rounded">
+            <div class="col-md-3"><label>Karyawan</label><input type="text" id="p_nama" class="form-control" required></div>
+            <div class="col-md-3"><label>NIP</label><input type="text" id="p_nip" class="form-control"></div>
+            <div class="col-md-3"><label>Cabang</label><input type="text" id="p_cabang" class="form-control"></div>
+          </div>
+          <table class="table border"><thead class="table-dark"><tr><th>Nama Seragam</th><th>Gender</th><th>Size</th><th>Qty</th><th>Ket</th><th>#</th></tr></thead>
+          <tbody id="pBody">${renderPeminjamanRow()}</tbody></table>
+          <button type="button" class="btn btn-sm btn-outline-secondary mb-3" onclick="addPRow()">+ Tambah Baris</button><br>
+          <button type="submit" class="btn btn-warning px-5 fw-bold">Simpan Peminjaman</button>
+        </form>
+      </div>`;
+    document.getElementById('pForm').addEventListener('submit', handlePeminjamanSubmit);
+  }
+  function renderPeminjamanRow() {
+    return `<tr>
+      <td><select class="form-select r-nama" required>${getOptions('names')}</select></td>
+      <td><select class="form-select r-gender">${getOptions('genders')}</select></td>
+      <td><select class="form-select r-size">${getOptions('sizes')}</select></td>
+      <td><input type="number" class="form-control r-qty" value="1"></td>
+      <td><input type="text" class="form-control r-ket"></td>
+      <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+    </tr>`;
+  }
+  function addPRow() { document.getElementById('pBody').insertAdjacentHTML('beforeend', renderPeminjamanRow()); }
+  function handlePeminjamanSubmit(e) {
+    e.preventDefault();
+    const items = Array.from(document.querySelectorAll('#pBody tr')).map(row => ({
+      "NAMA KARYAWAN": document.getElementById('p_nama').value, "NIP": document.getElementById('p_nip').value, "CABANG": document.getElementById('p_cabang').value,
+      "NAMA SERAGAM": row.querySelector('.r-nama').value, "GENDER": row.querySelector('.r-gender').value, "SIZE": row.querySelector('.r-size').value, "JUMLAH": row.querySelector('.r-qty').value, "KETERANGAN": row.querySelector('.r-ket').value
+    }));
+    showLoader(true);
+    google.script.run.withSuccessHandler(res => { showToast('Berhasil', res, 'success'); loadPage('home'); }).savePeminjaman(items);
+  }
+
+  // FORM RESIGN (MULTIFILE)
+  function renderResignForm() {
+    document.getElementById('app').innerHTML = `
+      <div class="card p-4">
+        <h4 class="fw-bold mb-4 text-danger"><i class="bi bi-person-x me-2"></i>Pengembalian Resign</h4>
+        <form id="rForm">
+          <div class="mb-3"><label>Nama Karyawan</label><input type="text" id="r_nama" class="form-control" required></div>
+          <table class="table border"><thead><tr><th>Nama Seragam</th><th>Gender</th><th>Size</th><th>Qty</th><th>Kondisi</th><th>#</th></tr></thead>
+          <tbody id="rBody"><tr>
+            <td><select class="form-select r-nama" required>${getOptions('names')}</select></td>
+            <td><select class="form-select r-gender">${getOptions('genders')}</select></td>
+            <td><select class="form-select r-size">${getOptions('sizes')}</select></td>
+            <td><input type="number" class="form-control r-qty" value="1"></td>
+            <td><select class="form-select r-kondisi"><option value="Bekas Layak">Bekas Layak</option><option value="Tidak Layak">Rusak</option></select></td>
+            <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+          </tr></tbody></table>
+          <button type="button" class="btn btn-sm btn-outline-secondary mb-3" onclick="addRRow()">+ Tambah Item</button><br>
+          <button type="submit" class="btn btn-danger px-5">Submit Pengembalian</button>
+        </form>
+      </div>`;
+    document.getElementById('rForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      // Logic looping submit data resign ke processResignIn di backend
+      showToast('Info', 'Data sedang diproses...', 'info');
+      loadPage('home');
+    });
+  }
+  function addRRow() { document.getElementById('rBody').insertAdjacentHTML('beforeend', `<tr><td><select class="form-select r-nama">${getOptions('names')}</select></td><td><select class="form-select r-gender">${getOptions('genders')}</select></td><td><select class="form-select r-size">${getOptions('sizes')}</select></td><td><input type="number" class="form-control r-qty" value="1"></td><td><select class="form-select r-kondisi"><option>Bekas Layak</option><option>Tidak Layak</option></select></td><td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td></tr>`); }
+
+  let existCounter = 0;
+
+function renderExistingForm() {
+  existCounter = 0;
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="card p-4 shadow-sm border-0">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold text-success mb-0"><i class="bi bi-person-check-fill me-2"></i>Bulk Request: Existing (Karyawan Lama)</h4>
+        <button class="btn btn-outline-success btn-sm" onclick="addExistingEmployeeSection()">
+          <i class="bi bi-plus-lg"></i> Tambah Karyawan
+        </button>
+      </div>
+
+      <div id="bulk-existing-container" class="accordion mb-4">
+        <!-- Section Karyawan Existing akan muncul di sini -->
+      </div>
+
+      <div class="border-top pt-3 text-end">
+        <button class="btn btn-success px-5" onclick="submitBulkExisting()">
+          <i class="bi bi-send-check me-2"></i>Kirim Request Existing
+        </button>
+      </div>
+    </div>`;
+
+  addExistingEmployeeSection();
+}
+
+function addExistingEmployeeSection() {
+  existCounter++;
+  const container = document.getElementById('bulk-existing-container');
+  const id = `ex_${existCounter}`;
+  
+  const section = document.createElement('div');
+  section.className = 'accordion-item mb-3 border shadow-sm rounded';
+  section.id = `card_${id}`;
+  section.innerHTML = `
+    <h2 class="accordion-header">
+      <button class="accordion-button bg-light text-success" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_${id}">
+        <span class="badge bg-success me-2">#${existCounter}</span> 
+        <strong id="label_${id}">Karyawan Existing</strong>
+      </button>
+    </h2>
+    <div id="collapse_${id}" class="accordion-collapse collapse show">
+      <div class="accordion-body">
+        <div class="row g-3 mb-3">
+          <div class="col-md-3">
+            <label class="small fw-bold">Nama Karyawan</label>
+            <input type="text" class="form-control ex-nama" oninput="updateLabel('${id}', this.value)" required>
+          </div>
+          <div class="col-md-2">
+            <label class="small fw-bold">NIP</label>
+            <input type="text" class="form-control ex-nip" required>
+          </div>
+          <div class="col-md-3">
+            <label class="small fw-bold">Posisi</label>
+            <input type="text" class="form-control ex-posisi">
+          </div>
+          <div class="col-md-3">
+            <label class="small fw-bold">Cabang</label>
+            <input type="text" class="form-control ex-cabang">
+          </div>
+          <div class="col-md-1 d-flex align-items-end">
+            <button class="btn btn-outline-danger w-100" onclick="removeEmployee('${id}')"><i class="bi bi-trash"></i></button>
+          </div>
+        </div>
+        
+        <div class="row mb-4">
+          <div class="col-12">
+            <label class="small fw-bold text-primary">Link Bukti Transfer (G-Drive / Dropbox / S3)</label>
+            <input type="text" class="form-control ex-bukti" placeholder="https://...">
+          </div>
+        </div>
+
+        <table class="table table-sm border">
+          <thead class="table-success">
+            <tr style="font-size: 11px;">
+              <th width="35%">NAMA SERAGAM</th>
+              <th width="15%">GENDER</th>
+              <th width="10%">SIZE</th>
+              <th width="10%">QTY</th>
+              <th width="25%">ALASAN BELI TAMBAHAN</th>
+              <th width="5%">#</th>
+            </tr>
+          </thead>
+          <tbody id="items_${id}">
+            <!-- Item seragam -->
+          </tbody>
+        </table>
+        <button class="btn btn-link btn-sm text-success text-decoration-none" onclick="addExistingItemRow('${id}')">
+          <i class="bi bi-plus-circle"></i> Tambah Item Seragam
+        </button>
+      </div>
+    </div>
+  `;
+  container.appendChild(section);
+  addExistingItemRow(id); // Tambah 1 baris item otomatis
+}
+function addExistingItemRow(empId) {
+  const tbody = document.getElementById(`items_${empId}`);
+  const row = document.createElement('tr');
+  row.className = 'u-row';
+  row.innerHTML = `
+    <td>
+      <select class="form-select form-select-sm u-kode">
+        <option value="">Pilih...</option>
+        ${getOptions('names')}
+      </select>
+    </td>
+    <td><select class="form-select form-select-sm u-gender">${getOptions('genders')}</select></td>
+    <td><select class="form-select form-select-sm u-size">${getOptions('sizes')}</select></td>
+    <td><input type="number" class="form-control form-control-sm u-qty" value="1"></td>
+    <td><input type="text" class="form-control form-control-sm u-alasan" placeholder="Misal: Rusak/Sempit"></td>
+    <td><button class="btn btn-sm text-danger" onclick="this.closest('tr').remove()"><i class="bi bi-x-circle"></i></button></td>
+  `;
+  tbody.appendChild(row);
+}
+
+function submitBulkExisting() {
+  const sections = document.querySelectorAll('.accordion-item');
+  const payload = [];
+
+  sections.forEach(sec => {
+    const empData = {
+      kategori: 'Existing',
+      nama: sec.querySelector('.ex-nama').value,
+      nip: sec.querySelector('.ex-nip').value,
+      posisi: sec.querySelector('.ex-posisi').value,
+      cabang: sec.querySelector('.ex-cabang').value,
+      bukti: sec.querySelector('.ex-bukti').value,
+      items: []
+    };
+
+    const rows = sec.querySelectorAll('.u-row');
+    rows.forEach(row => {
+      const kode = row.querySelector('.u-kode').value;
+      if (kode) {
+        empData.items.push({
+          kode: kode,
+          gender: row.querySelector('.u-gender').value,
+          size: row.querySelector('.u-size').value,
+          qty: row.querySelector('.u-qty').value,
+          alasan: row.querySelector('.u-alasan').value
+        });
+      }
+    });
+
+    if (empData.nama && empData.items.length > 0) {
+      payload.push(empData);
+    }
+  });
+
+  if (payload.length === 0) {
+    showToast('Peringatan', 'Lengkapi data minimal 1 karyawan dan 1 seragam.', 'warning');
+    return;
+  }
+
+  // Cek apakah bukti transfer sudah diisi (Opsional/Mandatory tergantung kebijakan)
+  const missingBukti = payload.some(p => !p.bukti);
+  if (missingBukti) {
+    Swal.fire({
+      title: 'Bukti Transfer Kosong',
+      text: 'Beberapa karyawan belum menyertakan link bukti transfer. Tetap lanjut?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Lanjut',
+      cancelButtonText: 'Lengkapi Dulu'
+    }).then(res => { if (res.isConfirmed) executeExistingSubmit(payload); });
+  } else {
+    executeExistingSubmit(payload);
+  }
+}
+
+function executeExistingSubmit(payload) {
+  showLoader(true);
+  google.script.run.withSuccessHandler(msg => {
+    showLoader(false);
+    showToast('Sukses', msg, 'success');
+    loadPage('home');
+  }).processRequest(payload);
+}
+let empCount = 0;
+function renderRequestForm(kat) {
+  console.log('Fungsi New Hire dimuat');
+  
+  // Jika kategorinya bukan New Hire, panggil fungsi aslinya (Existing)
+  if (kat === 'Existing') {
+    renderExistingForm(); // Memanggil fungsi Existing Anda yang sudah ada
+    return;
+  }
+
+  empCounter = 0;
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="card p-4 shadow-sm border-0">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold text-primary mb-0"><i class="bi bi-person-plus-fill me-2"></i>Bulk Request: New Hire</h4>
+        <button class="btn btn-outline-primary btn-sm" onclick="addEmployeeSection()">
+          <i class="bi bi-plus-lg"></i> Tambah Karyawan
+        </button>
+      </div>
+
+      <div id="bulk-employee-container" class="accordion mb-4">
+        <!-- Section Karyawan akan muncul di sini -->
+      </div>
+
+      <div class="border-top pt-3 text-end">
+        <button class="btn btn-primary px-5" onclick="submitBulkNewHire()">
+          <i class="bi bi-send-check me-2"></i>Kirim Semua Request
+        </button>
+      </div>
+    </div>`;
+
+  // Tambahkan baris pertama secara otomatis
+  addEmployeeSection();
+}
+
+function addEmployeeSection() {
+  empCounter++;
+  const container = document.getElementById('bulk-employee-container');
+  const id = `emp_${empCounter}`;
+  
+  const section = document.createElement('div');
+  section.className = 'accordion-item mb-3 border shadow-sm rounded';
+  section.id = `card_${id}`;
+  section.innerHTML = `
+    <h2 class="accordion-header">
+      <button class="accordion-button bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_${id}">
+        <span class="badge bg-primary me-2">#${empCounter}</span> 
+        <strong id="label_${id}">Karyawan Baru</strong>
+      </button>
+    </h2>
+    <div id="collapse_${id}" class="accordion-collapse collapse show">
+      <div class="accordion-body">
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <label class="small fw-bold">Nama Lengkap</label>
+            <input type="text" class="form-control e-nama" oninput="updateLabel('${id}', this.value)" required>
+          </div>
+          <div class="col-md-2">
+            <label class="small fw-bold">NIP</label>
+            <input type="text" class="form-control e-nip" required>
+          </div>
+          <div class="col-md-3">
+            <label class="small fw-bold">Posisi</label>
+            <select class="form-select e-posisi" onchange="applyPositionLogic('${id}', this.value)">
+              <option value="">Pilih Posisi...</option>
+              <option value="Apoteker">Apoteker</option>
+              <option value="TTK">TTK</option>
+              <option value="Health Advisor">Health Advisor</option>
+              <option value="HQ Kantor">HQ Kantor</option>
+              <option value="HQ Lapangan/Warehouse">HQ Lapangan/Warehouse</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="small fw-bold">Cabang</label>
+            <input type="text" class="form-control e-cabang">
+          </div>
+          <div class="col-md-1 d-flex align-items-end">
+            <button class="btn btn-outline-danger w-100" onclick="removeEmployee('${id}')"><i class="bi bi-trash"></i></button>
+          </div>
+        </div>
+
+        <table class="table table-sm border">
+          <thead class="table-secondary">
+            <tr style="font-size: 12px;">
+              <th>NAMA SERAGAM</th>
+              <th width="15%">GENDER</th>
+              <th width="15%">SIZE</th>
+              <th width="10%">QTY</th>
+              <th width="5%">#</th>
+            </tr>
+          </thead>
+          <tbody id="items_${id}">
+            <!-- Baris seragam otomatis/manual -->
+          </tbody>
+        </table>
+        <button class="btn btn-link btn-sm text-decoration-none" onclick="addUniformRow('${id}')">+ Tambah Item Manual</button>
+      </div>
+    </div>
+  `;
+  container.appendChild(section);
+}
+
+  function updateLabel(id, val) {
+  document.getElementById(`label_${id}`).innerText = val || "Karyawan Baru";
+}
+
+function removeEmployee(id) {
+  document.getElementById(`card_${id}`).remove();
+}
+
+// LOGIKA OTOMATIS BERDASARKAN POSISI
+function applyPositionLogic(empId, posisi) {
+  const tableBody = document.getElementById(`items_${empId}`);
+  tableBody.innerHTML = ""; // Reset table
+
+  // Tentukan item default
+  let defaultItems = [];
+  if (posisi === "Apoteker" || posisi === "TTK") {
+    defaultItems = ["Jas Apoteker", "Kemeja Alpro", "Kaos Polo"];
+  } else if (posisi !== "") {
+    defaultItems = ["Kemeja Alpro", "Kaos Polo"];
+  }
+
+  defaultItems.forEach(itemName => {
+    addUniformRow(empId, itemName);
+  });
+}
+
+function addUniformRow(empId, selectedName = "") {
+  const tbody = document.getElementById(`items_${empId}`);
+  const row = document.createElement('tr');
+  row.className = 'u-row';
+  row.innerHTML = `
+    <td>
+      <select class="form-select form-select-sm u-kode">
+        <option value="">Pilih Seragam...</option>
+        ${getOptions('names')}
+      </select>
+    </td>
+    <td><select class="form-select form-select-sm u-gender">${getOptions('genders')}</select></td>
+    <td><select class="form-select form-select-sm u-size">${getOptions('sizes')}</select></td>
+    <td><input type="number" class="form-control form-control-sm u-qty" value="1"></td>
+    <td><button class="btn btn-sm text-danger" onclick="this.closest('tr').remove()"><i class="bi bi-x-circle"></i></button></td>
+  `;
+  tbody.appendChild(row);
+
+  // Jika ada nama default, set value dropdown-nya
+  if (selectedName) {
+    const select = row.querySelector('.u-kode');
+    // Mencoba mencari opsi yang mengandung nama tersebut
+    Array.from(select.options).forEach(opt => {
+      if (opt.value.includes(selectedName)) select.value = opt.value;
+    });
+  }
+}
+
+// PENGIRIMAN DATA NESTED ARRAY
+function submitBulkNewHire() {
+  const sections = document.querySelectorAll('.accordion-item');
+  const payload = [];
+
+  sections.forEach(sec => {
+    const empData = {
+      nama: sec.querySelector('.e-nama').value,
+      nip: sec.querySelector('.e-nip').value,
+      posisi: sec.querySelector('.e-posisi').value,
+      cabang: sec.querySelector('.e-cabang').value,
+      items: []
+    };
+
+    const rows = sec.querySelectorAll('.u-row');
+    rows.forEach(row => {
+      const kode = row.querySelector('.u-kode').value;
+      if (kode) {
+        empData.items.push({
+          kode: kode,
+          gender: row.querySelector('.u-gender').value,
+          size: row.querySelector('.u-size').value,
+          qty: row.querySelector('.u-qty').value
+        });
+      }
+    });
+
+    if (empData.nama && empData.items.length > 0) {
+      payload.push(empData);
+    }
+  });
+
+  if (payload.length === 0) {
+    showToast('Peringatan', 'Mohon lengkapi data karyawan minimal 1 orang', 'warning');
+    return;
+  }
+
+  Swal.fire({
+    title: 'Kirim Request?',
+    text: `Total ${payload.length} Karyawan akan didaftarkan.`,
+    icon: 'question',
+    showCancelButton: true
+  }).then(res => {
+    if (res.isConfirmed) {
+      showLoader(true);
+      google.script.run.withSuccessHandler(msg => {
+        showLoader(false);
+        showToast('Sukses', msg, 'success');
+        loadPage('home');
+      }).processRequest(payload);
+    }
+  });
+}
+
+// Fungsi Baris Baru
+function addNewHireRow() {
+  return `
+    <tr class="item-row">
+      <td><select class="form-select i-kode" required>${getOptions('names')}</select></td>
+      <td><select class="form-select i-gender">${getOptions('genders')}</select></td>
+      <td><select class="form-select i-size">${getOptions('sizes')}</select></td>
+      <td><input type="number" class="form-control i-qty" value="1" min="1" required></td>
+      <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="this.closest('tr').remove()"><i class="bi bi-x-lg"></i></button></td>
+    </tr>
+  `;
+}
+
+function addMoreRow() {
+  document.getElementById('seragam-container').insertAdjacentHTML('beforeend', addNewHireRow());
+}
+
+// Submit Request (Collect Data)
+function handleRequestSubmit(kat) {
+  const rows = document.querySelectorAll('.item-row');
+  const items = Array.from(rows).map(row => ({
+    kode: row.querySelector('.i-kode').value,
+    gender: row.querySelector('.i-gender').value,
+    size: row.querySelector('.i-size').value,
+    qty: row.querySelector('.i-qty').value
+  }));
+
+  const payload = {
+    kategori: kat,
+    nama: document.getElementById('rq_nama').value,
+    nip: document.getElementById('rq_nip').value,
+    posisi: document.getElementById('rq_posisi').value,
+    cabang: document.getElementById('rq_cabang').value,
+    bukti: document.getElementById('rq_bukti')?.value || "-",
+    items: items
+  };
+
+  showLoader(true);
+  google.script.run.withSuccessHandler(res => {
+    showToast('Sukses', res, 'success');
+    loadPage('home');
+  }).processRequest(payload);
+}
+
+  /**
+ * UPDATE: UI Alokasi dengan Filter Nama
+ * Lokasi: Index.html (Script Area)
+ */
+
+let pendingDataRaw = []; // Menyimpan data sementara untuk filter
+
+/**
+ * PERBAIKAN: loadAllocationPage (Grouped by Employee)
+ * Lokasi: Index.html (Script Area)
+ */
+function loadAllocationPage() {
+  console.log("Memuat Halaman Alokasi Kelompok...");
+  showLoader(true);
+
+  google.script.run
+    .withSuccessHandler(data => {
+      console.log("Data Request Masuk:", data);
+      showLoader(false);
+      const app = document.getElementById('app');
+
+      if (!data || data.length === 0) {
+        app.innerHTML = `<div class="card p-5 text-center shadow-sm"><h5 class="text-muted">Tidak ada antrian alokasi.</h5></div>`;
+        return;
+      }
+
+      // GROUPING DATA BERDASARKAN NAMA KARYAWAN
+      const grouped = data.reduce((acc, item) => {
+        const name = item.NAMA_KARYAWAN || "Tanpa Nama";
+        if (!acc[name]) acc[name] = [];
+        acc[name].push(item);
+        return acc;
+      }, {});
+
+      let accordionHtml = "";
+      let index = 0;
+
+      for (const name in grouped) {
+        index++;
+        const items = grouped[name];
+        const collapseId = `collapse_${index}`;
+        const headerId = `heading_${index}`;
+
+        let tableRows = items.map(r => {
+          const cleanKode = r.KODE_SERAGAM.replace(/\s+/g, '');
+          const inputId = `qty_${r.ID}_${cleanKode}`;
+          return `
+            <tr>
+              <td>
+                <span class="fw-bold d-block">${r.KODE_SERAGAM}</span>
+                <small class="text-muted">Size: ${r.SIZE} | Gender: ${r.GENDER}</small>
+              </td>
+              <td class="text-center fw-bold text-danger">${r.JUMLAH}</td>
+              <td width="130px">
+                <input type="number" class="form-control form-control-sm alloc-input" 
+                  data-id="${r.ID}" data-kode="${r.KODE_SERAGAM}" 
+                  id="${inputId}" value="${r.JUMLAH}" min="0">
+              </td>
+            </tr>`;
+        }).join('');
+
+        accordionHtml += `
+          <div class="card mb-3 border-0 shadow-sm overflow-hidden">
+            <div class="card-header bg-white border-bottom p-0" id="${headerId}">
+              <button class="btn btn-light w-100 text-start p-3 d-flex justify-content-between align-items-center" 
+                type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
+                <div>
+                  <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-person-circle me-2"></i>${name}</h6>
+                  <small class="text-muted">${items.length} Item Request - Cabang: ${items[0].CABANG || '-'}</small>
+                </div>
+                <i class="bi bi-chevron-down"></i>
+              </button>
+            </div>
+            <div id="${collapseId}" class="collapse ${index === 1 ? 'show' : ''}" data-bs-parent="#app">
+              <div class="card-body bg-light">
+                <div class="table-responsive rounded bg-white shadow-sm mb-3">
+                  <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                      <tr style="font-size: 11px;">
+                        <th>ITEM SERAGAM</th>
+                        <th class="text-center">REQ</th>
+                        <th>QTY KIRIM</th>
+                      </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                  </table>
+                </div>
+                <div class="text-end">
+                  <button class="btn btn-primary btn-sm px-4 fw-bold shadow-sm" onclick="submitSingleEmployeeAlloc('${name}', '${collapseId}')">
+                    <i class="bi bi-check2-circle me-1"></i> Kirim Seragam untuk ${name}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      app.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="fw-bold mb-0 text-dark">Antrian Alokasi Per Karyawan</h4>
+          <span class="badge bg-dark">${Object.keys(grouped).length} Karyawan</span>
+        </div>
+        <div class="accordion" id="allocAccordion">${accordionHtml}</div>`;
+    })
+    .withFailureHandler(err => {
+      showLoader(false);
+      Swal.fire("Error", err.message, "error");
+    })
+    .getPendingRequests();
+}
+
+/**
+ * FUNGSI UNTUK MENGUMPULKAN DATA DARI SATU CARD KARYAWAN
+ */
+function submitSingleEmployeeAlloc(employeeName, collapseId) {
+  const container = document.getElementById(collapseId);
+  const inputs = container.querySelectorAll('.alloc-input');
+  const itemsToAlloc = [];
+
+  inputs.forEach(input => {
+    const qty = parseInt(input.value);
+    if (qty > 0) {
+      itemsToAlloc.push({
+        id: input.getAttribute('data-id'),
+        kode: input.getAttribute('data-kode'),
+        sendQty: qty
+      });
+    }
+  });
+
+  if (itemsToAlloc.length === 0) {
+    showToast('Info', 'Isi jumlah kirim minimal 1 item', 'info');
+    return;
+  }
+
+  Swal.fire({
+    title: 'Konfirmasi Kirim',
+    text: `Kirim ${itemsToAlloc.length} jenis seragam untuk ${employeeName}?`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Ya, Alokasikan'
+  }).then(res => {
+    if (res.isConfirmed) {
+      showLoader(true);
+      google.script.run
+        .withSuccessHandler(msg => {
+          showToast('Sukses', msg, 'success');
+          loadAllocationPage(); // Refresh list
+        })
+        .processAllocation({
+          employeeName: employeeName,
+          items: itemsToAlloc
+        });
+    }
+  });
+}
+
+/** 
+ * Fungsi doAlloc tidak berubah secara logika, 
+ * pastikan memanggil parameter yang benar dari input di atas.
+ */
+
+function doAlloc(id, nama, kode) {
+  // Ambil nilai dari input qty kirim
+  const inputId = `qty_${id}_${kode.replace(/\s+/g, '')}`;
+  const sendQty = document.getElementById(inputId).value;
+
+  if (!sendQty || sendQty <= 0) {
+    showToast('Error', 'Jumlah kirim harus lebih dari 0', 'error');
+    return;
+  }
+
+  Swal.fire({
+    title: 'Konfirmasi Alokasi',
+    text: `Kirim ${sendQty} pcs ${kode} untuk ${nama}?`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#0d6efd',
+    confirmButtonText: 'Ya, Kirim Sekarang'
+  }).then(res => {
+    if (res.isConfirmed) {
+      showLoader(true);
+      google.script.run.withSuccessHandler(msg => {
+        showToast('Berhasil', msg, 'success');
+        loadAllocationPage(); // Refresh data antrian
+      }).withFailureHandler(err => {
+        showLoader(false);
+        Swal.fire('Gagal', err.message, 'error');
+      }).processAllocation({
+        ID_REQUEST: id,
+        NAMA: nama,
+        KODE_SERAGAM: kode,
+        JUMLAH_KIRIM: sendQty
+      });
+    }
+  });
+}
+
+ /**
+ * FRONTEND: Load Riwayat Page
+ * Menarik data segar dari server dan mereset cache lokal
+ */
+function loadRiwayatPage() {
+  console.log("Memperbarui Riwayat Transaksi...");
+  
+  // 1. Tampilkan Loading
+  showLoader(true);
+  
+  // 2. Kosongkan data lama (Reset Cache)
+  currentHistoryData = []; 
+
+  // 3. Panggil Server untuk data terbaru
+  google.script.run
+    .withSuccessHandler(data => {
+      currentHistoryData = data; // Isi dengan data segar
+      renderRiwayatUI();         // Gambar kerangka tabel
+      filterHistory();           // Tampilkan isi data (termasuk filter default)
+      showLoader(false);         // Sembunyikan Loading
+    })
+    .withFailureHandler(err => {
+      showLoader(false);
+      Swal.fire("Gagal Memuat", "Terjadi kesalahan saat menarik data: " + err.message, "error");
+    })
+    .getAllTransactionHistory(); // Fungsi baru di Code.gs
+}
+
+function renderRiwayatUI() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="card border-0 shadow-sm p-4">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0 text-dark"><i class="bi bi-clock-history me-2 text-primary"></i>Riwayat Transaksi Real-Time</h4>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="loadRiwayatPage()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+          </button>
+          <button class="btn btn-success btn-sm" onclick="exportCSV()">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Download CSV
+          </button>
+        </div>
+      </div>
+      
+      <!-- Filter Area -->
+      <div class="row g-2 mb-4 bg-light p-3 rounded border">
+        <div class="col-md-5">
+          <label class="form-label small fw-bold">Cari Nama / Item</label>
+          <input type="text" id="f_nama" class="form-control form-control-sm" placeholder="Ketik untuk mencari..." onkeyup="filterHistory()">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-bold">Dari Tanggal</label>
+          <input type="date" id="f_start" class="form-control form-control-sm" onchange="filterHistory()">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-bold">Sampai Tanggal</label>
+          <input type="date" id="f_end" class="form-control form-control-sm" onchange="filterHistory()">
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+          <button class="btn btn-primary btn-sm w-100" onclick="resetRiwayatFilter()" title="Reset Filter">
+            <i class="bi bi-arrow-counterclockwise"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover table-sm align-middle">
+          <thead class="table-light">
+            <tr>
+              <th width="15%">Tanggal</th>
+              <th width="15%">Tipe</th>
+              <th width="25%">Karyawan / Sumber</th>
+              <th width="35%">Item Seragam</th>
+              <th width="10%" class="text-center">Qty</th>
+            </tr>
+          </thead>
+          <tbody id="hBody">
+            <!-- Data dimuat di sini -->
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function filterHistory() {
+  const searchQ = document.getElementById('f_nama').value.toLowerCase();
+  const startD = document.getElementById('f_start').value; // YYYY-MM-DD
+  const endD = document.getElementById('f_end').value;     // YYYY-MM-DD
+  const body = document.getElementById('hBody');
+
+  // Filter dari data segar (currentHistoryData)
+  const filtered = currentHistoryData.filter(item => {
+    const itemDate = item.tanggal.slice(0, 10); // Ambil YYYY-MM-DD dari ISO
+    const matchSearch = item.nama.toLowerCase().includes(searchQ) || item.item.toLowerCase().includes(searchQ);
+    const matchStart = !startD || itemDate >= startD;
+    const matchEnd = !endD || itemDate <= endD;
+    return matchSearch && matchStart && matchEnd;
+  });
+
+  body.innerHTML = filtered.map(r => {
+    const d = new Date(r.tanggal);
+    const formattedDate = d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const badgeClass = r.tipe.includes('IN') ? 'bg-success' : 'bg-info text-dark';
+
+    return `
+      <tr>
+        <td class="small fw-semibold text-secondary">${formattedDate}</td>
+        <td><span class="badge ${badgeClass}" style="font-size: 0.7rem;">${r.tipe}</span></td>
+        <td class="fw-bold text-dark">${r.nama}</td>
+        <td class="small">${r.item}</td>
+        <td class="fw-bold text-center">${r.qty}</td>
+      </tr>`;
+  }).join('');
+
+  if (filtered.length === 0) {
+    body.innerHTML = `<tr><td colspan="5" class="text-center py-5 text-muted">Data riwayat tidak ditemukan atau kosong.</td></tr>`;
+  }
+}
+function resetRiwayatFilter() {
+  document.getElementById('f_nama').value = '';
+  document.getElementById('f_start').value = '';
+  document.getElementById('f_end').value = '';
+  filterHistory();
+  showToast('Reset', 'Filter telah dibersihkan', 'info');
+}
+  function exportCSV() {
+    let csv = "Tanggal,Tipe,Nama,Item,Qty\n";
+    currentHistoryData.forEach(r => { csv += `${r.tanggal},${r.tipe},${r.nama},${r.item},${r.qty}\n`; });
+    const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv); a.download = 'riwayat_alpro.csv'; a.click();
+  }
+
+  function loadMasterPage() {
+  console.log("Memuat Master Stok...");
+  google.script.run.withSuccessHandler(data => {
+    let rows = data.map(r => {
+      const stokLayak = parseInt(r[4]) || 0;
+      const rowClass = stokLayak < 5 ? 'table-danger' : '';
+      
+      return `<tr class="${rowClass}">
+        <td>${r[0]}</td> <!-- Kode -->
+        <td>${r[1]}</td> <!-- Nama -->
+        <td>${r[2]}</td> <!-- Gender -->
+        <td>${r[3]}</td> <!-- Size -->
+        <td class="fw-bold">${r[4]}</td> <!-- Stok Layak -->
+        <td>${r[5]}</td> <!-- Stok Tidak Layak -->
+      </tr>`;
+    }).join('');
+
+    document.getElementById('app').innerHTML = `
+      <div class="card p-4 shadow-sm border-0">
+        <h4 class="fw-bold mb-4">Master Stok Gudang</h4>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light text-uppercase small">
+              <tr>
+                <th>Kode</th><th>Nama Seragam</th><th>Gender</th><th>Size</th><th>Stok Layak</th><th>Rusak</th>
+              </tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="6" class="text-center">Data kosong</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    showLoader(false);
+  }).getMasterStokData();
+}
+function loadReturnPage() {
+  console.log("Memuat Data Pengembalian Aktif...");
+  google.script.run.withSuccessHandler(loans => {
+    let rows = loans.map(l => `
+      <tr>
+        <td class="small fw-bold">${l.ID}</td>
+        <td>${l["NAMA KARYAWAN"]}<br><small class="text-muted">${l.NIP}</small></td>
+        <td>${l["NAMA SERAGAM"]} (${l.SIZE})</td>
+        <td class="text-center">${l.JUMLAH}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-primary" onclick="confirmReturn('${l.ID}', '${l["KODE SERAGAM"]}', ${l.JUMLAH}, '${l["NAMA KARYAWAN"]}')">
+            Proses Kembali
+          </button>
+        </td>
+      </tr>
+    `).join('');
+
+    document.getElementById('app').innerHTML = `
+      <div class="card p-4 shadow-sm border-0">
+        <h4 class="fw-bold mb-4 text-primary">Daftar Peminjaman Aktif</h4>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light text-uppercase small">
+              <tr><th>ID Pinjam</th><th>Karyawan</th><th>Item</th><th>Qty</th><th class="text-end">Aksi</th></tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="5" class="text-center py-4">Tidak ada data peminjaman aktif.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    showLoader(false);
+  }).getPeminjamanAktif();
+}
+
+function confirmReturn(id, kode, qty, nama) {
+  Swal.fire({
+    title: 'Konfirmasi Pengembalian',
+    text: `Karyawan ${nama} mengembalikan ${qty} pcs seragam? (Data akan masuk ke Stok Rusak)`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Ya, Kembalikan'
+  }).then(res => {
+    if(res.isConfirmed) {
+      showLoader(true);
+      google.script.run.withSuccessHandler(msg => {
+        showToast('Sukses', msg, 'success');
+        loadReturnPage(); // Refresh data
+      }).processReturn({ ID_PINJAM: id, KODE_SERAGAM: kode, JUMLAH: qty });
+    }
+  });
+}
+</script>
+</body>
+</html>
