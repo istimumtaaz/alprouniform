@@ -316,7 +316,10 @@
     // ==========================================
     // 4. MENU SERAGAM MASUK (MULTI-INPUT DATA MASSAL)
     // ==========================================
-let cachedMasterSeragam = [];    
+let cachedMasterSeragam = [];
+// Penampung data riwayat mutasi untuk filter & export CSV
+let cachedTransactions = [];
+let filteredTransactions = [];    
 let globalMasterSeragamOptions = ""; // Menyimpan cache daftar seragam agar hemat baris
 
     async function renderSeragamMasuk() {
@@ -688,45 +691,151 @@ let globalMasterSeragamOptions = ""; // Menyimpan cache daftar seragam agar hema
     // 6. RIWAYAT MUTASI (transaksi_seragam)
     // ==========================================
     async function renderRiwayatTransaksi() {
-      showLoader(true);
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam?order=id.desc`, { headers: supabaseHeaders });
-        if(!res.ok) throw new Error("Gagal mengambil log dari 'transaksi_seragam'.");
+  showLoader(true);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam?order=id.desc`, { headers: supabaseHeaders });
+    if(!res.ok) throw new Error("Gagal mengambil log dari 'transaksi_seragam'.");
+    
+    cachedTransactions = await res.json();
+    filteredTransactions = [...cachedTransactions]; // Sinkronkan data awal
+
+    document.getElementById('app').innerHTML = `
+      <div class="card p-4 shadow-sm border-0 bg-white">
+        <h4 class="fw-bold mb-4 text-primary"><i class="bi bi-arrow-left-right me-2"></i>Log Buku Mutasi Transaksi Gudang</h4>
         
-        const data = await res.json();
-
-        let rows = data.map(t => `
-          <tr>
-            <td><small>${t.tanggal_transaksi ? new Date(t.tanggal_transaksi).toLocaleString('id-ID') : '-'}</small></td>
-            <td><span class="badge ${t.tipe_transaksi === 'MASUK' ? 'bg-success' : 'bg-danger'}">${t.tipe_transaksi || ''}</span></td>
-            <td><strong class="text-dark">${t.jenis_sumber || ''}</strong></td>
-            <td>ID Seragam: #${t.seragam_id || ''}</td>
-            <td class="fw-bold">${t.jumlah ?? 0} pcs</td>
-            <td><span class="text-muted small">${t.keterangan || '-'}</span></td>
-          </tr>
-        `).join('');
-
-        document.getElementById('app').innerHTML = `
-          <div class="card p-4 shadow-sm border-0 bg-white">
-            <h4 class="fw-bold mb-4 text-primary"><i class="bi bi-arrow-left-right me-2"></i>Log Buku Mutasi Transaksi Gudang</h4>
-            <div class="table-responsive">
-              <table class="table table-hover align-middle">
-                <thead class="table-light text-uppercase small">
-                  <tr><th>Waktu Catat</th><th>Tipe</th><th>Sumber Alur</th><th>ID Item</th><th>Jumlah Mutasi</th><th>Keterangan</th></tr>
-                </thead>
-                <tbody>${rows || '<tr><td colspan="6" class="text-center">Belum ada aktivitas mutasi.</td></tr>'}</tbody>
-              </table>
-            </div>
+        <div class="row g-3 mb-4 p-3 bg-light rounded border">
+          <div class="col-md-3">
+            <label class="form-label small fw-bold">Cari Karyawan / Keterangan</label>
+            <input type="text" id="txSearchInput" class="form-control form-control-sm" placeholder="Ketik nama karyawan..." oninput="applyTransactionFilters()">
           </div>
-        `;
-      } catch (err) { 
-        console.error(err); 
-        showError(err.message);
-      } finally {
-        showLoader(false);
+          <div class="col-md-2">
+            <label class="form-label small fw-bold">Tipe Transaksi</label>
+            <select id="txTypeSelect" class="form-select form-select-sm" onchange="applyTransactionFilters()">
+              <option value="">-- Semua --</option>
+              <option value="MASUK">🟢 MASUK</option>
+              <option value="KELUAR">🔴 KELUAR</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-bold">Tanggal Mulai</label>
+            <input type="date" id="txStartDate" class="form-control form-control-sm" onchange="applyTransactionFilters()">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-bold">Tanggal Selesai</label>
+            <input type="date" id="txEndDate" class="form-control form-control-sm" onchange="applyTransactionFilters()">
+          </div>
+          <div class="col-md-3 d-flex align-items-end justify-content-end">
+            <button class="btn btn-sm btn-success w-100" onclick="downloadFilteredTxCSV()">
+              <i class="bi bi-file-earmark-spreadsheet me-1"></i> Download CSV Terfilter
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light text-uppercase small">
+              <tr><th>Waktu Catat</th><th>Tipe</th><th>Sumber Alur</th><th>ID Item</th><th>Jumlah Mutasi</th><th>Keterangan</th></tr>
+            </thead>
+            <tbody id="transaksiTableBody">
+              </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    
+    // Panggil fungsi render baris data pertama kali
+    updateTransactionTableRows(filteredTransactions);
+
+  } catch (err) { 
+    console.error(err); 
+    showError(err.message);
+  } finally {
+    showLoader(false);
+  }
+}
+
+// Fungsi menyuntikkan baris data ke dalam elemen tabel HTML
+function updateTransactionTableRows(dataList) {
+  const tbody = document.getElementById('transaksiTableBody');
+  if (!tbody) return;
+  
+  if (dataList.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada data transaksi mutasi yang cocok dengan filter.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = dataList.map(t => `
+    <tr>
+      <td><small>${t.tanggal_transaksi ? new Date(t.tanggal_transaksi).toLocaleString('id-ID') : '-'}</small></td>
+      <td><span class="badge ${t.tipe_transaksi === 'MASUK' ? 'bg-success' : 'bg-danger'}">${t.tipe_transaksi || ''}</span></td>
+      <td><strong class="text-dark">${t.jenis_sumber || ''}</strong></td>
+      <td>ID Seragam: #${t.seragam_id || ''}</td>
+      <td class="fw-bold">${t.jumlah ?? 0} pcs</td>
+      <td><span class="text-muted small">${t.keterangan || '-'}</span></td>
+    </tr>
+  `).join('');
+}
+
+// Logika penyaringan murni real-time berdasarkan input komponen filter
+function applyTransactionFilters() {
+  const keyword = document.getElementById('txSearchInput').value.toLowerCase().trim();
+  const type = document.getElementById('txTypeSelect').value;
+  const startDateStr = document.getElementById('txStartDate').value;
+  const endDateStr = document.getElementById('txEndDate').value;
+
+  filteredTransactions = cachedTransactions.filter(t => {
+    // 1. Cek kecocokan keyword pencarian pada kolom keterangan atau jenis sumber
+    const textKet = (t.keterangan || '').toLowerCase();
+    const textSumber = (t.jenis_sumber || '').toLowerCase();
+    const matchKeyword = textKet.includes(keyword) || textSumber.includes(keyword);
+
+    // 2. Cek kecocokan tipe mutasi (MASUK/KELUAR)
+    const matchType = type === "" || t.tipe_transaksi === type;
+
+    // 3. Cek pembatasan rentang periode tanggal audit manajemen
+    let matchDate = true;
+    if (t.tanggal_transaksi) {
+      const txDate = new Date(t.tanggal_transaksi);
+      if (startDateStr) {
+        const start = new Date(startDateStr);
+        start.setHours(0,0,0,0);
+        if (txDate < start) matchDate = false;
       }
+      if (endDateStr) {
+        const end = new Date(endDateStr);
+        end.setHours(23,59,59,999);
+        if (txDate > end) matchDate = false;
+      }
+    } else if (startDateStr || endDateStr) {
+      matchDate = false;
     }
 
+    return matchKeyword && matchType && matchDate;
+  });
+
+  // Render ulang isi tabel sesuai hasil saringan terbaru
+  updateTransactionTableRows(filteredTransactions);
+}
+
+// Fungsi ekspor otomatis ke file Microsoft Excel / CSV murni data yang terfilter saja
+function downloadFilteredTxCSV() {
+  if (filteredTransactions.length === 0) {
+    Swal.fire('Info', 'Tidak ada data hasil filter yang bisa diunduh, Kak Ahmad!', 'info');
+    return;
+  }
+  
+  const header = ["waktu_catat", "tipe_transaksi", "jenis_sumber_alur", "id_seragam", "jumlah_mutasi", "keterangan"];
+  const data = filteredTransactions.map(t => [
+    t.tanggal_transaksi ? new Date(t.tanggal_transaksi).toLocaleString('id-ID') : '-',
+    t.tipe_transaksi || '',
+    t.jenis_sumber || '',
+    t.seragam_id || '',
+    t.jumlah || 0,
+    `"${(t.keterangan || '').replace(/"/g, '""')}"` // Bungkus tanda kutip untuk mencegah kerusakan format csv jika ada spasi/koma
+  ]);
+
+  triggerDownload("laporan_audit_mutasi_seragam.csv", header, data);
+}
     // ==========================================
     // UTILITY: DOWNLOAD & UPLOAD CSV ENGINE
     // ==========================================
