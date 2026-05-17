@@ -314,8 +314,10 @@
     }
 
     // ==========================================
-    // 4. MENU SERAGAM MASUK (transaksi_seragam)
+    // 4. MENU SERAGAM MASUK (MULTI-INPUT DATA MASSAL)
     // ==========================================
+    let globalMasterSeragamOptions = ""; // Menyimpan cache daftar seragam agar hemat baris
+
     async function renderSeragamMasuk() {
       showLoader(true);
       try {
@@ -323,7 +325,8 @@
         if(!resMaster.ok) throw new Error("Gagal memuat item laci master_seragam.");
         
         const masterSeragam = await resMaster.json();
-        let opsiSeragam = masterSeragam.map(m => `<option value="${m.id}">${m.nama_seragam} - ${m.gender} (${m.ukuran})</option>`).join('');
+        // Simpan daftar seragam ke variabel global untuk dipakai saat tambah baris baru
+        globalMasterSeragamOptions = masterSeragam.map(m => `<option value="${m.id}">${m.nama_seragam} - ${m.gender} (${m.ukuran})</option>`).join('');
 
         document.getElementById('app').innerHTML = `
           <h3 class="fw-bold mb-4">Penerimaan Seragam Masuk</h3>
@@ -332,8 +335,7 @@
             <select id="sumberMasukSelect" class="form-select w-50" onchange="toggleAlurMasuk(this.value)">
               <option value="">-- Pilih Kategori Masuk --</option>
               <option value="Vendor">🏭 Kiriman Baru dari Vendor (Upload CSV)</option>
-              <option value="Resign - Bekas Layak">👤 Karyawan Resign - Bekas Layak (Manual)</option>
-              <option value="Resign - Bekas Tidak Layak">👤 Karyawan Resign - Bekas Tidak Layak (Manual)</option>
+              <option value="Resign">👤 Karyawan Resign (Multi-input / Sekali Submit)</option>
             </select>
           </div>
 
@@ -342,32 +344,147 @@
             <div class="row g-3 align-items-center">
               <div class="col-auto"><input type="file" id="vendorCsvPicker" accept=".csv" class="form-control form-control-sm"></div>
               <div class="col-auto"><button class="btn btn-sm btn-success px-3" onclick="eksekusiUploadCSVVendor()"><i class="bi bi-upload me-1"></i> Upload</button></div>
-              <div class="col-auto"><button class="btn btn-sm btn-outline-secondary px-3" onclick="downloadTemplateVendor()"><i class="bi bi-download me-1"></i> Download Template</button></div>
             </div>
           </div>
 
           <div id="alurResignArea" class="card p-4 shadow-sm border-0 bg-white d-none">
-            <h5 class="fw-bold text-primary mb-3"><i class="bi bi-person-down me-2"></i>Form Pengembalian Baju Karyawan Resign</h5>
-            <form id="formResignManual" onsubmit="simpanResignManual(event)">
-              <div class="mb-3 w-50">
-                <label class="form-label small fw-bold">Nama Karyawan</label>
-                <input type="text" id="resignNama" class="form-control" required placeholder="Nama Karyawan Resign">
+            <h5 class="fw-bold text-primary mb-3"><i class="bi bi-person-down me-2"></i>Form Kolektif Pengembalian Baju Karyawan Resign</h5>
+            <form id="formResignMassal" onsubmit="simpanResignMassal(event)">
+              <div class="mb-4 w-50">
+                <label class="form-label small fw-bold">Nama Karyawan Resign</label>
+                <input type="text" id="resignNama" class="form-control form-control-sm" required placeholder="Masukkan nama, contoh: ANISA">
               </div>
-              <div class="mb-3 w-50">
-                <label class="form-label small fw-bold">Pilih Item Baju</label>
-                <select id="resignSeragamId" class="form-select" required>${opsiSeragam}</select>
+              
+              <div class="table-responsive mb-3">
+                <table class="table table-bordered align-middle">
+                  <thead class="table-light small text-uppercase">
+                    <tr>
+                      <th style="width: 45%;">Pilih Jenis Seragam & Ukuran</th>
+                      <th style="width: 15%;">Jumlah (Pcs)</th>
+                      <th style="width: 30%;">Kondisi Kelayakan Baju</th>
+                      <th style="width: 10%;" class="text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="resignItemsTableBody">
+                    </tbody>
+                </table>
               </div>
-              <div class="mb-3 w-25">
-                <label class="form-label small fw-bold">Jumlah (Pcs)</label>
-                <input type="number" id="resignJumlah" class="form-control" required min="1" value="1">
+              
+              <div class="mb-4">
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addResignItemRow()">
+                  <i class="bi bi-plus-circle me-1"></i> Tambah Baris Baju
+                </button>
               </div>
-              <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i> Simpan Data</button>
+              
+              <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i> Simpan Semua Pengembalian</button>
             </form>
           </div>
         `;
       } catch (err) { 
         console.error(err); 
         showError(err.message);
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    function toggleAlurMasuk(sumber) {
+      document.getElementById('alurVendorArea').classList.add('d-none');
+      document.getElementById('alurResignArea').classList.add('d-none');
+      if (sumber === 'Vendor') document.getElementById('alurVendorArea').classList.remove('d-none');
+      if (sumber === 'Resign') {
+        document.getElementById('alurResignArea').classList.remove('d-none');
+        document.getElementById('resignItemsTableBody').innerHTML = "";
+        addResignItemRow(); // Kasih 1 baris input pertama otomatis biar tidak kosong
+      }
+    }
+
+    // Fungsi menambah baris input seragam baru secara dinamis
+    function addResignItemRow() {
+      const tbody = document.getElementById('resignItemsTableBody');
+      const row = document.createElement('tr');
+      row.className = "resign-item-row";
+      row.innerHTML = `
+        <td>
+          <select class="form-select form-select-sm select-seragam-id" required>
+            <option value="">-- Pilih Seragam --</option>
+            ${globalMasterSeragamOptions}
+          </select>
+        </td>
+        <td>
+          <input type="number" class="form-control form-control-sm input-jumlah" required min="1" value="1">
+        </td>
+        <td>
+          <select class="form-select form-select-sm select-kondisi" required>
+            <option value="Resign - Bekas Layak">👤 Bekas Layak (Masuk Stok Alokasi)</option>
+            <option value="Resign - Bekas Tidak Layak">👤 Bekas Tidak Layak (Khusus Event)</option>
+          </select>
+        </td>
+        <td class="text-center">
+          <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeResignItemRow(this)">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      `;
+      tbody.appendChild(row);
+    }
+
+    // Fungsi menghapus baris data jika kelebihan memasukkan baris jatah baju
+    function removeResignItemRow(button) {
+      const tbody = document.getElementById('resignItemsTableBody');
+      if (tbody.querySelectorAll('tr').length > 1) {
+        button.closest('tr').remove();
+      } else {
+        Swal.fire('Info', 'Minimal harus menginput 1 data seragam, Kak Ahmad!', 'info');
+      }
+    }
+
+    // Fungsi memproses seluruh baris inputan sekaligus ke Supabase transaksi_seragam
+    async function simpanResignMassal(e) {
+      e.preventDefault();
+      showLoader(true);
+      
+      const namaKaryawan = document.getElementById('resignNama').value.trim();
+      const rows = document.querySelectorAll('.resign-item-row');
+      const jsonPaketData = [];
+      
+      rows.forEach(row => {
+        const idSeragam = row.querySelector('.select-seragam-id').value;
+        const qty = row.querySelector('.input-jumlah').value;
+        const jenisSumberResign = row.querySelector('.select-kondisi').value;
+        
+        if (idSeragam && qty) {
+          jsonPaketData.push({
+            tipe_transaksi: "MASUK",
+            jenis_sumber: jenisSumberResign,
+            seragam_id: parseInt(idSeragam),
+            jumlah: parseInt(qty),
+            keterangan: `Pengembalian kolektif baju dari karyawan resign: ${namaKaryawan}`
+          });
+        }
+      });
+
+      if (jsonPaketData.length === 0) {
+        Swal.fire('Peringatan!', 'Belum ada item baju jatah seragam yang dipilih.', 'warning');
+        showLoader(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam`, {
+          method: "POST",
+          headers: supabaseHeaders,
+          body: JSON.stringify(jsonPaketData)
+        });
+        
+        if (res.ok) {
+          Swal.fire('Sukses Menyimpan!', `Berhasil mencatat ${jsonPaketData.length} jatah pengembalian seragam milik ${namaKaryawan}!`, 'success');
+          renderSeragamMasuk(); // Reset ulang form agar bersih kembali
+        } else {
+          throw new Error("Gagal menyuntikkan paket data transaksi massal ke Supabase.");
+        }
+      } catch (err) {
+        Swal.fire('Gagal!', err.message, 'error');
       } finally {
         showLoader(false);
       }
