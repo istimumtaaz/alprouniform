@@ -94,7 +94,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <script>
-    // ⚠️ MASUKKAN URL & ANON KEY SUPABASE ASLI KAMU DI SINI
+    // ⚠️ PASTIKAN KEDUA VARIABEL DI BAWAH INI MENGGUNAKAN DATA SUPABASE ASLIMU YA!
     const SUPABASE_URL = "https://mlpizvcjubahyqlgwpmb.supabase.co"; 
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scGl6dmNqdWJhaHlxbGd3cG1iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxOTMyMjEsImV4cCI6MjA4ODc2OTIyMX0.wxxlizU7FqX8v_HwhhURAPWj_XbmZVQjBq1Hbi6iStA";
 
@@ -106,14 +106,14 @@
 
     function showLoader(show) {
       const loader = document.getElementById('globalLoader');
-      if(loader) loader.style.display = show ? 'flex' : 'none';
+      if (loader) loader.style.display = show ? 'flex' : 'none';
     }
 
     function showError(message) {
       document.getElementById('app').innerHTML = `
         <div class="alert alert-danger p-4 shadow-sm" role="alert">
-          <h4 class="alert-heading fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Gagal Memuat Komponen!</h4>
-          <p>Terjadi kendala saat berkomunikasi dengan database Supabase atau saat merender data.</p>
+          <h4 class="alert-heading fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Gagal Memuat Data!</h4>
+          <p>Terjadi kendala koneksi atau struktur tabel tidak cocok dengan database Supabase.</p>
           <hr>
           <p class="mb-0 small">Pesan Eror: <code>${message}</code></p>
         </div>
@@ -122,7 +122,7 @@
 
     function switchMenu(menu, element) {
       document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
-      if(element) element.classList.add('active');
+      if (element) element.classList.add('active');
       
       if(menu === 'dashboard') renderDashboard();
       if(menu === 'stok') renderStokGudang();
@@ -139,7 +139,7 @@
       showLoader(true);
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_ringkasan_gudang`, { headers: supabaseHeaders });
-        if(!res.ok) throw new Error(`HTTP Error ${res.status} saat memuat Dashboard Summary.`);
+        if(!res.ok) throw new Error(`HTTP ${res.status} - Gagal memuat dashboard.`);
         
         const data = await res.json();
         const d = data[0] || { total_stok_baru_layak: 0, total_request_pending: 0, alokasi_bulan_ini: 0, peminjaman_aktif: 0, varian_stok_kritis: 0 };
@@ -194,7 +194,7 @@
       showLoader(true);
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/monitor_stok_gudang`, { headers: supabaseHeaders });
-        if(!res.ok) throw new Error(`HTTP Error ${res.status} saat memuat Monitor Stok Gudang.`);
+        if(!res.ok) throw new Error(`HTTP ${res.status} - Gagal mengambil data monitor stok.`);
         
         const data = await res.json();
 
@@ -241,7 +241,7 @@
       showLoader(true);
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/request_seragam?order=id.desc`, { headers: supabaseHeaders });
-        if(!res.ok) throw new Error(`HTTP Error ${res.status} saat memuat Data Request.`);
+        if(!res.ok) throw new Error(`HTTP ${res.status} - Gagal memuat data request seragam.`);
         
         const data = await res.json();
 
@@ -304,7 +304,7 @@
           Swal.fire('Berhasil!', `Status diperbarui menjadi ${statusBaru}.`, 'success');
           renderRequestSeragam();
         } else {
-          throw new Error("Gagal mengubah status di Supabase.");
+          throw new Error("Gagal mengupdate status di database.");
         }
       } catch (err) { 
         Swal.fire('Gagal!', err.message, 'error'); 
@@ -314,13 +314,13 @@
     }
 
     // ==========================================
-    // 4. MENU BARU: SERAGAM MASUK (VENDOR & RESIGN)
+    // 4. MENU: SERAGAM MASUK (VENDOR & RESIGN)
     // ==========================================
     async function renderSeragamMasuk() {
       showLoader(true);
       try {
         const resMaster = await fetch(`${SUPABASE_URL}/rest/v1/master_seragam?order=id.asc`, { headers: supabaseHeaders });
-        if(!resMaster.ok) throw new Error("Gagal mengambil data master baju dari Supabase.");
+        if(!resMaster.ok) throw new Error("Gagal mengambil daftar master seragam.");
         
         const masterSeragam = await resMaster.json();
         let opsiSeragam = masterSeragam.map(m => `<option value="${m.id}">${m.nama_seragam} - ${m.gender} (${m.ukuran})</option>`).join('');
@@ -368,7 +368,7 @@
       } catch (err) { 
         console.error(err); 
         showError(err.message);
-      } finally {
+      } finaly {
         showLoader(false);
       }
     }
@@ -404,7 +404,7 @@
           Swal.fire('Sukses!', 'Data pengembalian resign berhasil dicatat manual!', 'success');
           document.getElementById('formResignManual').reset();
         } else {
-          throw new Error("Gagal menyimpan transaksi manual ke Supabase.");
+          throw new Error("Gagal menginput pengembalian manual ke database.");
         }
       } catch (err) { 
         Swal.fire('Gagal!', err.message, 'error');
@@ -414,7 +414,7 @@
     }
 
     // ==========================================
-    // 5. MENU BARU: PEMINJAMAN EVENT & PENGEMBALIAN
+    // 5. MENU: PEMINJAMAN EVENT & PENGEMBALIAN
     // ==========================================
     async function renderPeminjamanEvent() {
       showLoader(true);
@@ -425,7 +425,7 @@
         let opsiSeragam = masterSeragam.map(m => `<option value="${m.id}">${m.nama_seragam} - ${m.gender} (${m.ukuran})</option>`).join('');
 
         const resTx = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam?jenis_sumber=eq.Event%20Keluar&order=id.desc`, { headers: supabaseHeaders });
-        if(!resTx.ok) throw new Error("Gagal mengambil log peminjaman.");
+        if(!resTx.ok) throw new Error("Gagal memuat log logistik event.");
         const dataTx = await resTx.json();
 
         let rows = dataTx.map(t => `
@@ -511,7 +511,7 @@
           Swal.fire('Berhasil Keluar!', 'Baju dipinjam untuk kebutuhan event!', 'success');
           renderPeminjamanEvent();
         } else {
-          throw new Error("Gagal menyimpan peminjaman ke Supabase.");
+          throw new Error("Gagal memproses peminjaman baju event.");
         }
       } catch (err) { 
         Swal.fire('Gagal!', err.message, 'error');
@@ -538,7 +538,7 @@
           Swal.fire('Kembali Sukses!', 'Seragam aman masuk kembali ke kategori Bekas Tidak Layak Event.', 'success');
           renderPeminjamanEvent();
         } else {
-          throw new Error("Gagal memproses pengembalian di Supabase.");
+          throw new Error("Gagal memproses mutasi pengembalian event.");
         }
       } catch (err) { 
         Swal.fire('Gagal!', err.message, 'error');
@@ -554,7 +554,8 @@
       showLoader(true);
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam?order=tanggal_transaksi.desc`, { headers: supabaseHeaders });
-        if(!res.ok) throw new Error("Gagal mengambil log riwayat mutasi.");
+        if(!res.ok) throw new Error("Gagal mengambil catatan log mutasi.");
+        
         const data = await res.json();
 
         let rows = data.map(t => `
@@ -629,8 +630,12 @@
             const row = lines[i].split(",");
             if (row.length < 6 || row[0].trim() === "") continue;
             jsonBody.push({
-              nama_karyawan: row[0].trim(), NIP: row[1].trim(), posisi_kerja: row[2].trim(), departemen_cabang: row[3].trim(),
-              jenis_request: row[4].trim(), gender_karyawan: row[5].trim(),
+              nama_karyawan: row[0].trim(),
+              nip: row[1].trim(), // 🌟 Kunci Perbaikan: Sudah diganti dari NIP huruf besar ke huruf kecil!
+              posisi_kerja: row[2].trim(),
+              departemen_cabang: row[3].trim(),
+              jenis_request: row[4].trim(),
+              gender_karyawan: row[5].trim(),
               ukuran_jas: row[6]?.trim() === 'NULL' || !row[6] ? null : row[6].trim(),
               ukuran_kemeja: row[7]?.trim() === 'NULL' || !row[7] ? null : row[7].trim(),
               ukuran_kaos: row[8]?.trim() === 'NULL' || !row[8] ? null : row[8].trim()
@@ -643,7 +648,7 @@
             Swal.fire('Sukses Massal!', `${jsonBody.length} Request Berhasil Ditambahkan!`, 'success'); 
             renderRequestSeragam(); 
           } else {
-            throw new Error("Gagal mengunggah file CSV ke Supabase.");
+            throw new Error("Gagal mendorong berkas CSV massal ke Supabase.");
           }
         } catch (err) { 
           Swal.fire('Gagal!', err.message, 'error'); 
@@ -682,7 +687,7 @@
             Swal.fire('Sukses Sinkron!', `Stok baru dari vendor berhasil bertambah!`, 'success'); 
             renderSeragamMasuk(); 
           } else {
-            throw new Error("Gagal mengunggah data vendor ke Supabase.");
+            throw new Error("Gagal menyinkronkan data kiriman vendor ke database.");
           }
         } catch (err) { 
           Swal.fire('Gagal!', err.message, 'error'); 
@@ -693,7 +698,7 @@
       reader.readAsText(file);
     }
 
-    // Pastikan fungsi dipanggil setelah halaman sepenuhnya siap
+    // Eksekusi render pertama saat window siap
     window.onload = function() { 
       renderDashboard(); 
     };
