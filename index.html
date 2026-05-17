@@ -316,7 +316,8 @@
     // ==========================================
     // 4. MENU SERAGAM MASUK (MULTI-INPUT DATA MASSAL)
     // ==========================================
-    let globalMasterSeragamOptions = ""; // Menyimpan cache daftar seragam agar hemat baris
+let cachedMasterSeragam = [];    
+let globalMasterSeragamOptions = ""; // Menyimpan cache daftar seragam agar hemat baris
 
     async function renderSeragamMasuk() {
       showLoader(true);
@@ -793,43 +794,78 @@
     }
 
     function eksekusiUploadCSVVendor() {
-      const filePicker = document.getElementById('vendorCsvPicker');
-      if (!filePicker || filePicker.files.length === 0) { Swal.fire('Waduh!', 'Pilih file .csv vendor!', 'warning'); return; }
-      const file = filePicker.files[0];
-      const reader = new FileReader();
-      showLoader(true);
-      reader.onload = async function (e) {
-        try {
-          const lines = e.target.result.split("\n");
-          const jsonBody = [];
-          for (let i = 1; i < lines.length; i++) {
-            const row = lines[i].split(",");
-            if (row.length < 2 || row[0].trim() === "") continue;
-            jsonBody.push({
-              tipe_transaksi: "MASUK",
-              jenis_sumber: "Vendor",
-              seragam_id: parseInt(row[0].trim()),
-              jumlah: parseInt(row[1].trim()),
-              keterangan: `Penerimaan Vendor Nota: ${row[2]?.trim() || '-'}`
-            });
-          }
-          const res = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam`, {
-            method: "POST", headers: { ...supabaseHeaders, "Prefer": "return=minimal" }, body: JSON.stringify(jsonBody)
+  const filePicker = document.getElementById('vendorCsvPicker');
+  if (!filePicker || filePicker.files.length === 0) { Swal.fire('Waduh!', 'Pilih file .csv vendor!', 'warning'); return; }
+  const file = filePicker.files[0];
+  const reader = new FileReader();
+  showLoader(true);
+  
+  reader.onload = async function (e) {
+    try {
+      const lines = e.target.result.split("\n");
+      const jsonBody = [];
+      let itemGagalCount = 0;
+
+      for (let i = 1; i < lines.length; i++) {
+        const row = lines[i].split(",");
+        if (row.length < 4 || row[0].trim() === "") continue;
+
+        const csvNama = row[0].trim().toLowerCase();
+        const csvGender = row[1].trim().toLowerCase();
+        const csvUkuran = row[2].trim().toLowerCase();
+        const csvJumlah = parseInt(row[3].trim());
+        const csvNota = row[4]?.trim() || '-';
+
+        // 🔍 DETEKTIF OTOMATIS: Mencari ID Seragam berdasarkan kombinasi teks Nama, Gender, & Ukuran
+        const cocok = cachedMasterSeragam.find(m => 
+          m.nama_seragam.toLowerCase().trim() === csvNama &&
+          m.gender.toLowerCase().trim() === csvGender &&
+          m.ukuran.toLowerCase().trim() === csvUkuran
+        );
+
+        if (cocok) {
+          jsonBody.push({
+            tipe_transaksi: "MASUK",
+            jenis_sumber: "Vendor",
+            seragam_id: cocok.id, // ID database otomatis ditemukan di sini
+            jumlah: csvJumlah,
+            keterangan: `Penerimaan Vendor Nota: ${csvNota}`
           });
-          if (res.ok) { 
-            Swal.fire('Sukses!', 'Mutasi pengadaan dari vendor berhasil masuk!', 'success'); 
-            renderSeragamMasuk(); 
-          } else {
-            throw new Error("Gagal mengirim data vendor ke laci transaksi_seragam.");
-          }
-        } catch (err) { 
-          Swal.fire('Gagal!', err.message, 'error'); 
-        } finally {
-          showLoader(false);
+        } else {
+          itemGagalCount++;
+          console.warn(`Gagal mencocokkan baju: ${row[0]} ${row[1]} ${row[2]}`);
         }
-      };
-      reader.readAsText(file);
+      }
+
+      if (jsonBody.length === 0) {
+        throw new Error("Tidak ada data jatah baju yang cocok dengan spesifikasi Master Seragam di database.");
+      }
+
+      // Kirim data massal ke laci transaksi_seragam
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam`, {
+        method: "POST", 
+        headers: { ...supabaseHeaders, "Prefer": "return=minimal" }, 
+        body: JSON.stringify(jsonBody)
+      });
+
+      if (res.ok) { 
+        if (itemGagalCount > 0) {
+          Swal.fire('Sinkron Parsial!', `Stok vendor berhasil masuk. Namun ada ${itemGagalCount} baris data gagal karena salah ketik nama/ukuran baju (Periksa Log Browser).`, 'warning');
+        } else {
+          Swal.fire('Sukses!', 'Seluruh mutasi jatah stok baru dari vendor berhasil masuk!', 'success');
+        }
+        renderSeragamMasuk(); 
+      } else {
+        throw new Error("Gagal mengirim data mutasi masuk ke Supabase.");
+      }
+    } catch (err) { 
+      Swal.fire('Gagal!', err.message, 'error'); 
+    } finally {
+      showLoader(false);
     }
+  };
+  reader.readAsText(file);
+}
 
     window.onload = function() { 
       renderDashboard(); 
@@ -839,11 +875,11 @@
 // (Tambahkan fungsi ini di bagian bawah dekat dengan fungsi downloadTemplateRequest)
 // ==========================================
 function downloadTemplateVendor() {
-  // Kolom diatur huruf kecil semua agar pas dengan transaksi_seragam
-  const header = ["seragam_id", "jumlah", "nota_vendor"]; 
+  // Kolom diubah menjadi teks yang mudah dipahami orang awam
+  const header = ["nama_seragam", "gender", "ukuran", "jumlah", "nota_vendor"]; 
   const data = [
-    ["1", "50", "INV-ALPRO-2026-001"], 
-    ["2", "100", "INV-ALPRO-2026-002"]
+    ["Kemeja", "Pria", "L", "50", "INV-ALPRO-2026-001"], 
+    ["Kaos Polo", "Wanita", "M", "100", "INV-ALPRO-2026-001"]
   ];
   triggerDownload("template_vendor_masuk.csv", header, data);
 }
