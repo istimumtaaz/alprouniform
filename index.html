@@ -320,17 +320,20 @@ let cachedMasterSeragam = [];
 let globalMasterSeragamOptions = ""; // Menyimpan cache daftar seragam agar hemat baris
 
     async function renderSeragamMasuk() {
-      showLoader(true);
-      try {
-        const resMaster = await fetch(`${SUPABASE_URL}/rest/v1/master_seragam?order=id.asc`, { headers: supabaseHeaders });
-        if(!resMaster.ok) throw new Error("Gagal memuat item laci master_seragam.");
-        
-        const masterSeragam = await resMaster.json();
-        // Simpan daftar seragam ke variabel global untuk dipakai saat tambah baris baru
-        globalMasterSeragamOptions = masterSeragam.map(m => `<option value="${m.id}">${m.nama_seragam} - ${m.gender} (${m.ukuran})</option>`).join('');
+  showLoader(true);
+  try {
+    const resMaster = await fetch(`${SUPABASE_URL}/rest/v1/master_seragam?order=id.asc`, { headers: supabaseHeaders });
+    if(!resMaster.ok) throw new Error("Gagal memuat item laci master_seragam.");
+    
+    const masterSeragam = await resMaster.json();
+    
+    // 🌟 KUNCI PERBAIKAN 1: Simpan data ke cache agar bisa dibaca saat upload CSV
+    cachedMasterSeragam = masterSeragam; 
+    
+    globalMasterSeragamOptions = masterSeragam.map(m => `<option value="${m.id}">${m.nama_seragam} - ${m.gender} (${m.ukuran})</option>`).join('');
 
-        document.getElementById('app').innerHTML = `
-          <h3 class="fw-bold mb-4">Penerimaan Seragam Masuk</h3>
+    document.getElementById('app').innerHTML = `
+      <h3 class="fw-bold mb-4">Penerimaan Seragam Masuk</h3>
           <div class="card p-4 shadow-sm border-0 bg-white mb-4">
             <label class="fw-bold mb-2">Pilih Kategori Seragam Masuk:</label>
             <select id="sumberMasukSelect" class="form-select w-50" onchange="toggleAlurMasuk(this.value)">
@@ -802,21 +805,36 @@ let globalMasterSeragamOptions = ""; // Menyimpan cache daftar seragam agar hema
   
   reader.onload = async function (e) {
     try {
-      const lines = e.target.result.split("\n");
+      const lines = e.target.result.split(/\r?\n/);
       const jsonBody = [];
       let itemGagalCount = 0;
 
+      // 🌟 KUNCI PERBAIKAN 2: Membaca posisi urutan kolom secara dinamis berdasarkan Header CSV
+      const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+      const idxNama = headers.indexOf("nama_seragam");
+      const idxGender = headers.indexOf("gender");
+      const idxUkuran = headers.indexOf("ukuran");
+      const idxJumlah = headers.indexOf("jumlah");
+      const idxNota = headers.indexOf("nota_vendor");
+
+      if (idxNama === -1 || idxGender === -1 || idxUkuran === -1 || idxJumlah === -1) {
+        throw new Error("Format header CSV salah! Pastikan kolom wajib ini ada: nama_seragam, gender, ukuran, jumlah");
+      }
+
       for (let i = 1; i < lines.length; i++) {
         const row = lines[i].split(",");
-        if (row.length < 4 || row[0].trim() === "") continue;
+        if (row.length <= 1 || row[idxNama]?.trim() === "") continue;
 
-        const csvNama = row[0].trim().toLowerCase();
-        const csvGender = row[1].trim().toLowerCase();
-        const csvUkuran = row[2].trim().toLowerCase();
-        const csvJumlah = parseInt(row[3].trim());
-        const csvNota = row[4]?.trim() || '-';
+        const csvNama = row[idxNama].trim().toLowerCase();
+        const csvGender = row[idxGender].trim().toLowerCase();
+        const csvUkuran = row[idxUkuran].trim().toLowerCase();
+        const csvJumlah = parseInt(row[idxJumlah]?.trim() || "0");
+        const csvNota = idxNota !== -1 ? (row[idxNota]?.trim() || '-') : '-';
 
-        // 🔍 DETEKTIF OTOMATIS: Mencari ID Seragam berdasarkan kombinasi teks Nama, Gender, & Ukuran
+        // 🌟 FILTRASI PINTAR: Lewati otomatis jatah ukuran baju yang jumlahnya 0 agar tidak mengotori database
+        if (isNaN(csvJumlah) || csvJumlah <= 0) continue;
+
+        // Mencari id seragam asli di database berdasarkan kombinasi nama, gender, dan ukuran teks
         const cocok = cachedMasterSeragam.find(m => 
           m.nama_seragam.toLowerCase().trim() === csvNama &&
           m.gender.toLowerCase().trim() === csvGender &&
@@ -827,21 +845,20 @@ let globalMasterSeragamOptions = ""; // Menyimpan cache daftar seragam agar hema
           jsonBody.push({
             tipe_transaksi: "MASUK",
             jenis_sumber: "Vendor",
-            seragam_id: cocok.id, // ID database otomatis ditemukan di sini
+            seragam_id: cocok.id,
             jumlah: csvJumlah,
             keterangan: `Penerimaan Vendor Nota: ${csvNota}`
           });
         } else {
           itemGagalCount++;
-          console.warn(`Gagal mencocokkan baju: ${row[0]} ${row[1]} ${row[2]}`);
+          console.warn(`Tidak cocok dengan database: ${row[idxNama]} | ${row[idxGender]} | ${row[idxUkuran]}`);
         }
       }
 
       if (jsonBody.length === 0) {
-        throw new Error("Tidak ada data jatah baju yang cocok dengan spesifikasi Master Seragam di database.");
+        throw new Error("Tidak ada data baju (dengan jumlah > 0) yang cocok dengan spesifikasi Master Seragam.");
       }
 
-      // Kirim data massal ke laci transaksi_seragam
       const res = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam`, {
         method: "POST", 
         headers: { ...supabaseHeaders, "Prefer": "return=minimal" }, 
@@ -850,13 +867,13 @@ let globalMasterSeragamOptions = ""; // Menyimpan cache daftar seragam agar hema
 
       if (res.ok) { 
         if (itemGagalCount > 0) {
-          Swal.fire('Sinkron Parsial!', `Stok vendor berhasil masuk. Namun ada ${itemGagalCount} baris data gagal karena salah ketik nama/ukuran baju (Periksa Log Browser).`, 'warning');
+          Swal.fire('Sukses Parsial!', `Stok berhasil masuk. Ada ${itemGagalCount} baris dilewati karena salah ketik nama/ukuran baju (Cek Console).`, 'warning');
         } else {
-          Swal.fire('Sukses!', 'Seluruh mutasi jatah stok baru dari vendor berhasil masuk!', 'success');
+          Swal.fire('Sukses!', 'Seluruh jatah stok baru dari vendor berhasil masuk ke gudang!', 'success');
         }
         renderSeragamMasuk(); 
       } else {
-        throw new Error("Gagal mengirim data mutasi masuk ke Supabase.");
+        throw new Error("Gagal mengirim paket data mutasi masuk ke Supabase.");
       }
     } catch (err) { 
       Swal.fire('Gagal!', err.message, 'error'); 
