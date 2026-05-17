@@ -340,12 +340,18 @@
           </div>
 
           <div id="alurVendorArea" class="card p-4 shadow-sm border-0 bg-white d-none">
-            <h5 class="fw-bold text-success mb-3"><i class="bi bi-file-earmark-excel me-2"></i>Upload Nota Pengadaan Vendor (.csv)</h5>
-            <div class="row g-3 align-items-center">
-              <div class="col-auto"><input type="file" id="vendorCsvPicker" accept=".csv" class="form-control form-control-sm"></div>
-              <div class="col-auto"><button class="btn btn-sm btn-success px-3" onclick="eksekusiUploadCSVVendor()"><i class="bi bi-upload me-1"></i> Upload</button></div>
-            </div>
-          </div>
+  <h5 class="fw-bold text-success mb-3"><i class="bi bi-file-earmark-excel me-2"></i>Upload Nota Pengadaan Vendor (.csv)</h5>
+  <div class="row g-3 align-items-center">
+    <div class="col-auto"><input type="file" id="vendorCsvPicker" accept=".csv" class="form-control form-control-sm"></div>
+    <div class="col-auto"><button class="btn btn-sm btn-success px-3" onclick="eksekusiUploadCSVVendor()"><i class="bi bi-upload me-1"></i> Upload</button></div>
+    
+    <div class="col-auto">
+      <button class="btn btn-sm btn-outline-success px-3" onclick="downloadTemplateVendor()">
+        <i class="bi bi-download me-1"></i> Download Template CSV Vendor
+      </button>
+    </div>
+  </div>
+</div>
 
           <div id="alurResignArea" class="card p-4 shadow-sm border-0 bg-white d-none">
             <h5 class="fw-bold text-primary mb-3"><i class="bi bi-person-down me-2"></i>Form Kolektif Pengembalian Baju Karyawan Resign</h5>
@@ -828,6 +834,19 @@
     window.onload = function() { 
       renderDashboard(); 
     };
+// ==========================================
+// UTILITY BARU: DOWNLOAD TEMPLATE VENDOR CSV
+// (Tambahkan fungsi ini di bagian bawah dekat dengan fungsi downloadTemplateRequest)
+// ==========================================
+function downloadTemplateVendor() {
+  // Kolom diatur huruf kecil semua agar pas dengan transaksi_seragam
+  const header = ["seragam_id", "jumlah", "nota_vendor"]; 
+  const data = [
+    ["1", "50", "INV-ALPRO-2026-001"], 
+    ["2", "100", "INV-ALPRO-2026-002"]
+  ];
+  triggerDownload("template_vendor_masuk.csv", header, data);
+}
   </script>
 </body>
 </html>
