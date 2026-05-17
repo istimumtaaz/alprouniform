@@ -238,30 +238,33 @@
     // 3. MENU REQUEST SERAGAM (request_seragam)
     // ==========================================
     async function renderRequestSeragam() {
-      showLoader(true);
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/request_seragam?order=id.desc`, { headers: supabaseHeaders });
-        if(!res.ok) throw new Error(`HTTP ${res.status} - Gagal memuat data laci 'request_seragam'.`);
-        
-        const data = await res.json();
+  showLoader(true);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/request_seragam?order=id.desc`, { headers: supabaseHeaders });
+    if(!res.ok) throw new Error(`HTTP ${res.status} - Gagal memuat data laci 'request_seragam'.`);
+    
+    const dataRaw = await res.json();
 
-        let rows = data.map(r => `
-          <tr>
-            <td>${r.nama_karyawan || ''} (NIP: ${r.nip || '-'})</td>
-            <td>${r.posisi_kerja || ''}</td>
-            <td>${r.departemen_cabang || ''}</td>
-            <td><span class="badge bg-info text-dark">${r.gender_karyawan || '-'}</span></td>
-            <td><small>Jas: ${r.ukuran_jas || '-'}<br>Kemeja: ${r.ukuran_kemeja || '-'}<br>Kaos: ${r.ukuran_kaos || '-'}</small></td>
-            <td>
-              <select class="form-select form-select-sm fw-bold ${r.status_request === 'Disetujui' ? 'text-success' : 'text-warning'}" 
-                onchange="ubahStatusRequest(${r.id}, this.value)">
-                <option value="Pending" ${r.status_request === 'Pending' ? 'selected' : ''}>⏳ Pending</option>
-                <option value="Disetujui" ${r.status_request === 'Disetujui' ? 'selected' : ''}>✅ Disetujui</option>
-              </select>
-            </td>
-          </tr>
-        `).join('');
+    // 🌟 KUNCI PERBAIKAN: Saring agar data yang berstatus 'Disetujui' langsung dieliminasi dari layar
+    const data = dataRaw.filter(r => r.status_request !== 'Disetujui');
 
+    let rows = data.map(r => `
+      <tr>
+        <td>${r.nama_karyawan || ''} (NIP: ${r.nip || '-'})</td>
+        <td>${r.posisi_kerja || ''}</td>
+        <td>${r.departemen_cabang || ''}</td>
+        <td><span class="badge bg-info text-dark">${r.gender_karyawan || '-'}</span></td>
+        <td><small>Jas: ${r.ukuran_jas || '-'}<br>Kemeja: ${r.ukuran_kemeja || '-'}<br>Kaos: ${r.ukuran_kaos || '-'}</small></td>
+        <td>
+          <select class="form-select form-select-sm fw-bold ${r.status_request === 'Disetujui' ? 'text-success' : 'text-warning'}" 
+            onchange="ubahStatusRequest(${r.id}, this.value)">
+            <option value="Pending" ${r.status_request === 'Pending' ? 'selected' : ''}>⏳ Pending</option>
+            <option value="Disetujui" ${r.status_request === 'Disetujui' ? 'selected' : ''}>✅ Disetujui</option>
+          </select>
+        </td>
+      </tr>
+    `).join('');
+    
         document.getElementById('app').innerHTML = `
           <div class="card p-4 shadow-sm border-0 bg-white mb-4">
             <h5 class="fw-bold text-dark mb-2"><i class="bi bi-file-earmark-spreadsheet-fill text-success me-2"></i>Upload Request Seragam via CSV</h5>
@@ -818,6 +821,9 @@ function applyTransactionFilters() {
 }
 
 // Fungsi ekspor otomatis ke file Microsoft Excel / CSV murni data yang terfilter saja
+// ==========================================
+// FIX ENGINE: DOWNLOAD CSV TANPA GESER KOLOM
+// ==========================================
 function downloadFilteredTxCSV() {
   if (filteredTransactions.length === 0) {
     Swal.fire('Info', 'Tidak ada data hasil filter yang bisa diunduh, Kak Ahmad!', 'info');
@@ -825,14 +831,27 @@ function downloadFilteredTxCSV() {
   }
   
   const header = ["waktu_catat", "tipe_transaksi", "jenis_sumber_alur", "id_seragam", "jumlah_mutasi", "keterangan"];
-  const data = filteredTransactions.map(t => [
-    t.tanggal_transaksi ? new Date(t.tanggal_transaksi).toLocaleString('id-ID') : '-',
-    t.tipe_transaksi || '',
-    t.jenis_sumber || '',
-    t.seragam_id || '',
-    t.jumlah || 0,
-    `"${(t.keterangan || '').replace(/"/g, '""')}"` // Bungkus tanda kutip untuk mencegah kerusakan format csv jika ada spasi/koma
-  ]);
+  const data = filteredTransactions.map(t => {
+    // 🌟 KUNCI PERBAIKAN: Hilangkan koma pada tanggal agar tidak memecah kolom CSV saat di-join
+    let waktuFormat = '-';
+    if (t.tanggal_transaksi) {
+      waktuFormat = new Date(t.tanggal_transaksi).toLocaleString('id-ID').replace(',', '');
+    }
+    
+    // Proteksi ekstra: Bungkus semua data teks dengan tanda kutip ganda 
+    // agar jika nama vendor atau keterangan berisi koma, Excel tidak akan pecah/geser
+    const jenisSumberClean = `"${(t.jenis_sumber || '').replace(/"/g, '""')}"`;
+    const keteranganClean = `"${(t.keterangan || '').replace(/"/g, '""')}"`;
+
+    return [
+      waktuFormat,
+      t.tipe_transaksi || '',
+      jenisSumberClean,
+      t.seragam_id || '',
+      t.jumlah || 0,
+      keteranganClean
+    ];
+  });
 
   triggerDownload("laporan_audit_mutasi_seragam.csv", header, data);
 }
