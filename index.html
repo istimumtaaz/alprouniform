@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ALPRO UNIFORM - Sinkronisasi Supabase</title>
+  <title>ALPRO UNIFORM - Sistem Sinkron Mutlak Lowercase</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -94,7 +94,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <script>
-    // ⚠️ MASUKKAN URL & ANON KEY PROYEK SUPABASE KAMU DI SINI
+    // ✅ KREDENSIAL ASLI SUPABASE KAMU SUDAH DISINKRONKAN
     const SUPABASE_URL = "https://mlpizvcjubahyqlgwpmb.supabase.co"; 
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scGl6dmNqdWJhaHlxbGd3cG1iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxOTMyMjEsImV4cCI6MjA4ODc2OTIyMX0.wxxlizU7FqX8v_HwhhURAPWj_XbmZVQjBq1Hbi6iStA";
 
@@ -113,9 +113,9 @@
       document.getElementById('app').innerHTML = `
         <div class="alert alert-danger p-4 shadow-sm" role="alert">
           <h4 class="alert-heading fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Gagal Memuat Data!</h4>
-          <p>Terjadi kendala koneksi atau nama tabel/kolom tidak cocok dengan skema Supabase.</p>
+          <p>Terjadi kendala koneksi. Pastikan nama laci tabel & kolom di Supabase sudah dibuat dengan huruf kecil semua.</p>
           <hr>
-          <p class="mb-0 small">Pesan Sistem: <code>${message}</code></p>
+          <p class="mb-0 small">Pesan Sistem / Error Log: <code>${message}</code></p>
         </div>
       `;
     }
@@ -133,13 +133,13 @@
     }
 
     // ==========================================
-    // 1. DASHBOARD RINGKASAN
+    // 1. MENU DASHBOARD SUMMARY
     // ==========================================
     async function renderDashboard() {
       showLoader(true);
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_ringkasan_gudang`, { headers: supabaseHeaders });
-        if(!res.ok) throw new Error(`HTTP ${res.status} - Gagal memuat dashboard view.`);
+        if(!res.ok) throw new Error(`HTTP ${res.status} - Gagal memuat view ringkasan dashboard.`);
         
         const data = await res.json();
         const d = data[0] || { total_stok_baru_layak: 0, total_request_pending: 0, alokasi_bulan_ini: 0, peminjaman_aktif: 0, varian_stok_kritis: 0 };
@@ -165,6 +165,18 @@
                 <div class="display-5 fw-bold text-success mt-2">${d.alokasi_bulan_ini} <span class="fs-6 text-muted">pcs</span></div>
               </div>
             </div>
+            <div class="col-md-6">
+              <div class="card border-0 shadow-sm p-4 bg-white">
+                <div class="text-muted small text-uppercase fw-bold">Peminjaman Status Hack Aktif</div>
+                <div class="display-6 fw-bold text-info mt-2">${d.peminjaman_aktif} <span class="fs-6 text-muted">item</span></div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card border-0 shadow-sm p-4 bg-white">
+                <div class="text-muted small text-uppercase fw-bold">Varian Jenis Seragam Kritis</div>
+                <div class="display-6 fw-bold text-danger mt-2">${d.varian_stok_kritis} <span class="fs-6 text-muted">varian (≤ 5 pcs)</span></div>
+              </div>
+            </div>
           </div>
         `;
       } catch (err) { 
@@ -176,24 +188,25 @@
     }
 
     // ==========================================
-    // 2. MASTER STOK GUDANG (stok_seragam)
+    // 2. MENU MASTER STOK GUDANG (monitor_stok_gudang)
     // ==========================================
     async function renderStokGudang() {
       showLoader(true);
       try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/stok_seragam?order=seragam_id.asc`, { headers: supabaseHeaders });
-        if(!res.ok) throw new Error(`HTTP ${res.status} - Gagal mengambil data tabel 'stok_seragam'.`);
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/monitor_stok_gudang?order=seragam_id.asc`, { headers: supabaseHeaders });
+        if(!res.ok) throw new Error(`HTTP ${res.status} - Gagal mengambil data laci 'monitor_stok_gudang'.`);
         
         const data = await res.json();
 
         let rows = data.map(s => `
           <tr>
             <td><strong>#${s.seragam_id || ''}</strong></td>
-            <td>${s.nama_item || ''}</td>
-            <td><span class="badge bg-light text-dark">${s.ukuran || ''}</span></td>
-            <td class="text-success fw-bold">${s.stok_layak ?? 0} pcs</td>
-            <td class="text-warning fw-bold">${s.stok_rusak ?? 0} pcs</td>
-            <td class="table-primary fw-bold text-center">${s.total_fisik ?? 0} pcs</td>
+            <td>${s.nama_seragam || ''}</td>
+            <td><span class="badge bg-light text-dark">${s.gender || ''}</span></td>
+            <td><span class="fw-bold">${s.ukuran || ''}</span></td>
+            <td class="text-success fw-bold">${s.stok_baru_dan_layak ?? 0} pcs</td>
+            <td class="text-warning fw-bold">${s.stok_bekas_tidak_layak ?? 0} pcs</td>
+            <td class="table-primary fw-bold text-center">${s.total_stok_fisik ?? 0} pcs</td>
           </tr>
         `).join('');
 
@@ -204,11 +217,11 @@
               <table class="table table-hover align-middle">
                 <thead class="table-light text-uppercase small">
                   <tr>
-                    <th>Kode Seragam</th><th>Nama Item</th><th>Ukuran</th>
-                    <th>Baru / Layak</th><th>Rusak / Reject</th><th class="text-center">Total Fisik Gudang</th>
+                    <th>Kode Seragam</th><th>Nama Item</th><th>Gender</th><th>Ukuran</th>
+                    <th>Baru / Layak</th><th>Bekas (Event)</th><th class="text-center">Total Fisik Gudang</th>
                   </tr>
                 </thead>
-                <tbody>${rows || '<tr><td colspan="6" class="text-center">Gudang kosong.</td></tr>'}</tbody>
+                <tbody>${rows || '<tr><td colspan="7" class="text-center">Gudang kosong.</td></tr>'}</tbody>
               </table>
             </div>
           </div>
@@ -222,13 +235,13 @@
     }
 
     // ==========================================
-    // 3. REQUEST JATAH SERAGAM (request_seragam)
+    // 3. MENU REQUEST SERAGAM (request_seragam)
     // ==========================================
     async function renderRequestSeragam() {
       showLoader(true);
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/request_seragam?order=id.desc`, { headers: supabaseHeaders });
-        if(!res.ok) throw new Error(`HTTP ${res.status} - Gagal memuat data dari tabel 'request_seragam'.`);
+        if(!res.ok) throw new Error(`HTTP ${res.status} - Gagal memuat data laci 'request_seragam'.`);
         
         const data = await res.json();
 
@@ -255,6 +268,7 @@
             <div class="row g-3 align-items-center mt-1">
               <div class="col-auto"><input type="file" id="csvFilePicker" accept=".csv" class="form-control form-control-sm"></div>
               <div class="col-auto"><button class="btn btn-sm btn-primary px-3" onclick="eksekusiUploadCSV()"><i class="bi bi-cloud-upload me-1"></i> Jalankan Upload</button></div>
+              <div class="col-auto"><button class="btn btn-sm btn-outline-success px-3" onclick="downloadTemplateRequest()"><i class="bi bi-download me-1"></i> Download Template CSV</button></div>
             </div>
           </div>
 
@@ -290,7 +304,7 @@
           Swal.fire('Berhasil!', `Status diperbarui menjadi ${statusBaru}.`, 'success');
           renderRequestSeragam();
         } else {
-          throw new Error("Gagal merubah status di Supabase.");
+          throw new Error("Gagal merubah status request.");
         }
       } catch (err) { 
         Swal.fire('Gagal!', err.message, 'error'); 
@@ -300,16 +314,16 @@
     }
 
     // ==========================================
-    // 4. SERAGAM MASUK (transaksi_seragam)
+    // 4. MENU SERAGAM MASUK (transaksi_seragam)
     // ==========================================
     async function renderSeragamMasuk() {
       showLoader(true);
       try {
-        const resMaster = await fetch(`${SUPABASE_URL}/rest/v1/stok_seragam?order=seragam_id.asc`, { headers: supabaseHeaders });
-        if(!resMaster.ok) throw new Error("Gagal memuat master stok seragam.");
+        const resMaster = await fetch(`${SUPABASE_URL}/rest/v1/master_seragam?order=id.asc`, { headers: supabaseHeaders });
+        if(!resMaster.ok) throw new Error("Gagal memuat item laci master_seragam.");
         
         const masterSeragam = await resMaster.json();
-        let opsiSeragam = masterSeragam.map(m => `<option value="${m.seragam_id}">${m.nama_item} (${m.ukuran})</option>`).join('');
+        let opsiSeragam = masterSeragam.map(m => `<option value="${m.id}">${m.nama_seragam} - ${m.gender} (${m.ukuran})</option>`).join('');
 
         document.getElementById('app').innerHTML = `
           <h3 class="fw-bold mb-4">Penerimaan Seragam Masuk</h3>
@@ -328,6 +342,7 @@
             <div class="row g-3 align-items-center">
               <div class="col-auto"><input type="file" id="vendorCsvPicker" accept=".csv" class="form-control form-control-sm"></div>
               <div class="col-auto"><button class="btn btn-sm btn-success px-3" onclick="eksekusiUploadCSVVendor()"><i class="bi bi-upload me-1"></i> Upload</button></div>
+              <div class="col-auto"><button class="btn btn-sm btn-outline-secondary px-3" onclick="downloadTemplateVendor()"><i class="bi bi-download me-1"></i> Download Template</button></div>
             </div>
           </div>
 
@@ -336,7 +351,7 @@
             <form id="formResignManual" onsubmit="simpanResignManual(event)">
               <div class="mb-3 w-50">
                 <label class="form-label small fw-bold">Nama Karyawan</label>
-                <input type="text" id="resignNama" class="form-control" required>
+                <input type="text" id="resignNama" class="form-control" required placeholder="Nama Karyawan Resign">
               </div>
               <div class="mb-3 w-50">
                 <label class="form-label small fw-bold">Pilih Item Baju</label>
@@ -389,7 +404,7 @@
           Swal.fire('Sukses!', 'Data masuk berhasil dicatat!', 'success');
           document.getElementById('formResignManual').reset();
         } else {
-          throw new Error("Gagal menginput log transaksi.");
+          throw new Error("Gagal menginput ke laci transaksi_seragam.");
         }
       } catch (err) { 
         Swal.fire('Gagal!', err.message, 'error');
@@ -399,28 +414,29 @@
     }
 
     // ==========================================
-    // 5. PEMINJAMAN EVENT (peminjaman_seragam)
+    // 5. MENU PEMINJAMAN EVENT (transaksi_seragam log alur)
     // ==========================================
     async function renderPeminjamanEvent() {
       showLoader(true);
       try {
-        const resMaster = await fetch(`${SUPABASE_URL}/rest/v1/stok_seragam?order=seragam_id.asc`, { headers: supabaseHeaders });
-        if(!resMaster.ok) throw new Error("Gagal memuat master stok seragam.");
+        const resMaster = await fetch(`${SUPABASE_URL}/rest/v1/master_seragam?order=id.asc`, { headers: supabaseHeaders });
+        if(!resMaster.ok) throw new Error("Gagal memuat master_seragam.");
         const masterSeragam = await resMaster.json();
-        let opsiSeragam = masterSeragam.map(m => `<option value="${m.seragam_id}">${m.nama_item} (${m.ukuran})</option>`).join('');
+        let opsiSeragam = masterSeragam.map(m => `<option value="${m.id}">${m.nama_seragam} - ${m.gender} (${m.ukuran})</option>`).join('');
 
-        const resTx = await fetch(`${SUPABASE_URL}/rest/v1/peminjaman_seragam?status_pinjam=eq.Dipinjam&order=id.desc`, { headers: supabaseHeaders });
-        if(!resTx.ok) throw new Error("Gagal memuat data dari tabel 'peminjaman_seragam'.");
+        // Ambil log transaksi pengeluaran event yang belum dipulangkan
+        const resTx = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam?jenis_sumber=eq.Event%20Keluar&order=id.desc`, { headers: supabaseHeaders });
+        if(!resTx.ok) throw new Error("Gagal memuat data log dari 'transaksi_seragam'.");
         const dataTx = await resTx.json();
 
         let rows = dataTx.map(t => `
           <tr>
             <td><strong>#${t.id}</strong></td>
-            <td>${t.nama_karyawan || 'Event'}</td>
+            <td>${t.keterangan || 'Event Alpro'}</td>
             <td>ID Seragam: #${t.seragam_id}</td>
             <td class="fw-bold text-danger">${t.jumlah} pcs</td>
             <td>
-              <button class="btn btn-sm btn-outline-success" onclick="prosesPengembalianEvent(${t.id}, ${t.seragam_id}, ${t.jumlah}, '${t.nama_karyawan || ''}')">
+              <button class="btn btn-sm btn-outline-success" onclick="prosesPengembalianEvent(${t.seragam_id}, ${t.jumlah}, '${t.keterangan || ''}')">
                 <i class="bi bi-arrow-down-left-circle me-1"></i> Proses Kembali
               </button>
             </td>
@@ -480,14 +496,15 @@
       const jumlah = document.getElementById('eventJumlah').value;
 
       try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/peminjaman_seragam`, {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam`, {
           method: "POST",
           headers: supabaseHeaders,
           body: JSON.stringify({
-            nama_karyawan: namaKaryawan,
+            tipe_transaksi: "KELUAR",
+            jenis_sumber: "Event Keluar",
             seragam_id: parseInt(seragamId),
             jumlah: parseInt(jumlah),
-            status_pinjam: "Dipinjam"
+            keterangan: namaKaryawan
           })
         });
         if (res.ok) {
@@ -503,10 +520,10 @@
       }
     }
 
-    async function prosesPengembalianEvent(id, kodeSeragam, jumlah, namaKaryawan) {
+    async function prosesPengembalianEvent(seragamId, jumlah, namaKaryawan) {
       Swal.fire({
         title: 'Konfirmasi Pengembalian',
-        text: `Karyawan ${namaKaryawan} mengembalikan ${jumlah} pcs baju? Data akan diproses melalui fungsi RPC database.`,
+        text: `Karyawan/Event ${namaKaryawan} mengembalikan ${jumlah} pcs baju? Data akan diproses langsung otomatis ke stok bekas tidak layak.`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Ya, Kembalikan'
@@ -514,22 +531,22 @@
         if(result.isConfirmed) {
           showLoader(true);
           try {
-            // Memanggil fungsi RPC pengembalian di database Supabase kamu
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/peminjaman_event_masuk_stok`, {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam`, {
               method: "POST",
               headers: supabaseHeaders,
               body: JSON.stringify({
-                p_id: id,
-                p_kode_seragam: kodeSeragam,
-                p_jumlah: parseInt(jumlah),
-                p_nama_karyawan: namaKaryawan
+                tipe_transaksi: "MASUK",
+                jenis_sumber: "Event Masuk",
+                seragam_id: seragamId,
+                jumlah: parseInt(jumlah),
+                keterangan: `Pengembalian dari event: ${namaKaryawan}`
               })
             });
             if (res.ok) {
-              Swal.fire('Sukses Kembali!', 'Stok terupdate via RPC.', 'success');
+              Swal.fire('Sukses Kembali!', 'Stok event terupdate otomatis.', 'success');
               renderPeminjamanEvent();
             } else {
-              throw new Error("Pemicu RPC gagal dijalankan. Pastikan fungsi 'peminjaman_event_masuk_stok' ada di database.");
+              throw new Error("Gagal memproses pengembalian seragam event.");
             }
           } catch (err) { 
             Swal.fire('Gagal!', err.message, 'error');
@@ -546,14 +563,14 @@
     async function renderRiwayatTransaksi() {
       showLoader(true);
       try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam?order=waktu_catat.desc`, { headers: supabaseHeaders });
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam?order=id.desc`, { headers: supabaseHeaders });
         if(!res.ok) throw new Error("Gagal mengambil log dari 'transaksi_seragam'.");
         
         const data = await res.json();
 
         let rows = data.map(t => `
           <tr>
-            <td><small>${t.waktu_catat ? new Date(t.waktu_catat).toLocaleString('id-ID') : '-'}</small></td>
+            <td><small>${t.tanggal_transaksi ? new Date(t.tanggal_transaksi).toLocaleString('id-ID') : '-'}</small></td>
             <td><span class="badge ${t.tipe_transaksi === 'MASUK' ? 'bg-success' : 'bg-danger'}">${t.tipe_transaksi || ''}</span></td>
             <td><strong class="text-dark">${t.jenis_sumber || ''}</strong></td>
             <td>ID Seragam: #${t.seragam_id || ''}</td>
@@ -584,8 +601,31 @@
     }
 
     // ==========================================
-    // CSV UPLOAD ENGINE
+    // UTILITY: DOWNLOAD & UPLOAD CSV ENGINE
     // ==========================================
+    function downloadTemplateRequest() {
+      const header = ["nama_karyawan", "nip", "posisi_kerja", "departemen_cabang", "jenis_request", "gender_karyawan", "ukuran_jas", "ukuran_kemeja", "ukuran_kaos"];
+      const data = [["Ahmad Fauzi", "10021", "Apoteker", "Cabang Menteng", "Karyawan Baru", "Pria", "L", "XL", "L"]];
+      triggerDownload("template_request_seragam.csv", header, data);
+    }
+
+    function downloadTemplateVendor() {
+      const header = ["seragam_id", "jumlah_masuk", "nota_vendor"];
+      const data = [["1", "50", "INV-ALPRO-2026-001"], ["2", "100", "INV-ALPRO-2026-001"]];
+      triggerDownload("template_vendor_masuk.csv", header, data);
+    }
+
+    function triggerDownload(filename, header, rows) {
+      let csvContent = header.join(",") + "\n" + rows.map(r => r.join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
     function eksekusiUploadCSV() {
       const filePicker = document.getElementById('csvFilePicker');
       if (!filePicker || filePicker.files.length === 0) { Swal.fire('Waduh!', 'Pilih file .csv jatah karyawan terlebih dahulu!', 'warning'); return; }
@@ -615,10 +655,10 @@
             method: "POST", headers: { ...supabaseHeaders, "Prefer": "return=minimal" }, body: JSON.stringify(jsonBody)
           });
           if (res.ok) { 
-            Swal.fire('Sukses!', `${jsonBody.length} data request berhasil di-upload!`, 'success'); 
+            Swal.fire('Sukses!', `${jsonBody.length} data request berhasil di-upload massal!`, 'success'); 
             renderRequestSeragam(); 
           } else {
-            throw new Error("Gagal mengunggah ke tabel 'request_seragam'.");
+            throw new Error("Gagal mengunggah ke laci request_seragam.");
           }
         } catch (err) { 
           Swal.fire('Gagal!', err.message, 'error'); 
@@ -654,10 +694,10 @@
             method: "POST", headers: { ...supabaseHeaders, "Prefer": "return=minimal" }, body: JSON.stringify(jsonBody)
           });
           if (res.ok) { 
-            Swal.fire('Sukses!', 'Mutasi masuk vendor berhasil disinkronkan!', 'success'); 
+            Swal.fire('Sukses!', 'Mutasi pengadaan dari vendor berhasil masuk!', 'success'); 
             renderSeragamMasuk(); 
           } else {
-            throw new Error("Gagal mengunggah nota ke 'transaksi_seragam'.");
+            throw new Error("Gagal mengirim data vendor ke laci transaksi_seragam.");
           }
         } catch (err) { 
           Swal.fire('Gagal!', err.message, 'error'); 
