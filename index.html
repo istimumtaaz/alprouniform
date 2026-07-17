@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ALPRO UNIFORM - Sistem Sinkron Mutlak Lowercase</title>
+  <title>ALPRO UNIFORM - Inventory Management System</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -82,6 +82,9 @@
         <a href="#" class="sidebar-link" onclick="switchMenu('seragam_masuk', this)"><i class="bi bi-arrow-down-left-circle me-2"></i> Seragam Masuk</a>
         <a href="#" class="sidebar-link" onclick="switchMenu('peminjaman', this)"><i class="bi bi-arrow-up-right-circle me-2"></i> Peminjaman Event</a>
         <a href="#" class="sidebar-link" onclick="switchMenu('transaksi', this)"><i class="bi bi-arrow-left-right me-2"></i> Riwayat Transaksi</a>
+        <hr style="border-color: rgba(255,255,255,0.1); margin: 8px 12px;">
+        <a href="#" class="sidebar-link" onclick="switchMenu('destroy', this)"><i class="bi bi-trash3-fill me-2"></i> Seragam Destroy</a>
+        <a href="#" class="sidebar-link" onclick="switchMenu('master_aset', this)"><i class="bi bi-people-fill me-2"></i> Master Aset Karyawan</a>
       </nav>
     </div>
 
@@ -95,8 +98,8 @@
 
   <script>
     // ✅ KREDENSIAL ASLI SUPABASE KAMU SUDAH DISINKRONKAN
-    const SUPABASE_URL = "https://mlpizvcjubahyqlgwpmb.supabase.co"; 
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scGl6dmNqdWJhaHlxbGd3cG1iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxOTMyMjEsImV4cCI6MjA4ODc2OTIyMX0.wxxlizU7FqX8v_HwhhURAPWj_XbmZVQjBq1Hbi6iStA";
+    const SUPABASE_URL = "https://qdstfpcqeklridphwmef.supabase.co"; 
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkc3RmcGNxZWtscmlkcGh3bWVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMDkxNjYsImV4cCI6MjA5NzY4NTE2Nn0.1XP5CeHfZqbI6JLRfTnAqNSXVzQ4Vs5x_Zuq4f60ci4";
 
     const supabaseHeaders = {
       "apikey": SUPABASE_ANON_KEY,
@@ -130,6 +133,8 @@
       if(menu === 'seragam_masuk') renderSeragamMasuk();
       if(menu === 'peminjaman') renderPeminjamanEvent();
       if(menu === 'transaksi') renderRiwayatTransaksi();
+      if(menu === 'destroy') renderSeragamDestroy();
+      if(menu === 'master_aset') renderMasterAsetKaryawan();
     }
 
     // ==========================================
@@ -296,8 +301,9 @@
             <td><span class="badge bg-light text-dark">${s.gender || ''}</span></td>
             <td><span class="fw-bold">${s.ukuran || ''}</span></td>
             <td class="text-success fw-bold">${s.stok_baru_dan_layak ?? 0} pcs</td>
-            <td class="text-warning fw-bold">${s.stok_bekas_tidak_layak ?? 0} pcs</td>
-            <td class="table-primary fw-bold text-center">${s.total_stok_fisik ?? 0} pcs</td>
+            <td class="text-warning fw-bold">${s.stok_event ?? 0} pcs</td>
+            <td class="text-danger fw-bold">${s.stok_bekas_tidak_layak ?? 0} pcs</td>
+            <td class="table-primary fw-bold text-center">${s.stok_total_fisik ?? s.total_stok_fisik ?? 0} pcs</td>
           </tr>
         `).join('');
 
@@ -309,10 +315,10 @@
                 <thead class="table-light text-uppercase small">
                   <tr>
                     <th>Kode Seragam</th><th>Nama Item</th><th>Gender</th><th>Ukuran</th>
-                    <th>Baru / Layak</th><th>Bekas (Event)</th><th class="text-center">Total Fisik Gudang</th>
+                    <th>Baru / Layak</th><th>Bekas (Event)</th><th>Tidak Layak (Destroy)</th><th class="text-center">Total Fisik Gudang</th>
                   </tr>
                 </thead>
-                <tbody>${rows || '<tr><td colspan="7" class="text-center">Gudang kosong.</td></tr>'}</tbody>
+                <tbody>${rows || '<tr><td colspan="8" class="text-center">Gudang kosong.</td></tr>'}</tbody>
               </table>
             </div>
           </div>
@@ -419,12 +425,13 @@ let globalMasterSeragamOptions = ""; // Menyimpan cache daftar seragam agar hema
     async function renderSeragamMasuk() {
   showLoader(true);
   try {
-    const resMaster = await fetch(`${SUPABASE_URL}/rest/v1/master_seragam?order=id.asc`, { headers: supabaseHeaders });
-    if(!resMaster.ok) throw new Error("Gagal memuat item laci master_seragam.");
+    // Fetch dari stok_seragam langsung — nama/gender/ukuran sudah ada di sini
+    const resMaster = await fetch(`${SUPABASE_URL}/rest/v1/stok_seragam?order=id.asc`, { headers: supabaseHeaders });
+    if(!resMaster.ok) throw new Error("Gagal memuat data stok_seragam.");
     
     const masterSeragam = await resMaster.json();
     
-    // 🌟 KUNCI PERBAIKAN 1: Simpan data ke cache agar bisa dibaca saat upload CSV
+    // Simpan ke cache
     cachedMasterSeragam = masterSeragam; 
     
     globalMasterSeragamOptions = masterSeragam.map(m => `<option value="${m.id}">${m.nama_seragam} - ${m.gender} (${m.ukuran})</option>`).join('');
@@ -566,20 +573,30 @@ let globalMasterSeragamOptions = ""; // Menyimpan cache daftar seragam agar hema
       const cabangKaryawan = document.getElementById('resignCabang').value.trim();
       const rows = document.querySelectorAll('.resign-item-row');
       const jsonPaketData = [];
+
+      // Kelompokkan per seragam_id & kondisi untuk update stok_seragam
+      const stokLayakMap  = {}; // seragam_id -> total qty layak
+      const stokDestroyMap = {}; // seragam_id -> total qty tidak layak
       
       rows.forEach(row => {
-        const idSeragam = row.querySelector('.select-seragam-id').value;
-        const qty = row.querySelector('.input-jumlah').value;
-        const jenisSumberResign = row.querySelector('.select-kondisi').value;
+        const idSeragam = parseInt(row.querySelector('.select-seragam-id').value);
+        const qty = parseInt(row.querySelector('.input-jumlah').value);
+        const jenisSumber = row.querySelector('.select-kondisi').value;
         
         if (idSeragam && qty) {
           jsonPaketData.push({
             tipe_transaksi: "MASUK",
-            jenis_sumber: jenisSumberResign,
-            seragam_id: parseInt(idSeragam),
-            jumlah: parseInt(qty),
-            keterangan: `Pengembalian baju dari karyawan resign: ${namaKaryawan} (${posisiKaryawan} - ${cabangKaryawan}). Status Kelayakan: ${jenisSumberResign}`
+            jenis_sumber: jenisSumber,
+            seragam_id: idSeragam,
+            jumlah: qty,
+            keterangan: `Pengembalian baju dari karyawan resign: ${namaKaryawan} (${posisiKaryawan} - ${cabangKaryawan}). Status: ${jenisSumber}`
           });
+
+          if (jenisSumber === 'Resign - Bekas Layak') {
+            stokLayakMap[idSeragam]   = (stokLayakMap[idSeragam]   || 0) + qty;
+          } else if (jenisSumber === 'Resign - Destroy') {
+            stokDestroyMap[idSeragam] = (stokDestroyMap[idSeragam] || 0) + qty;
+          }
         }
       });
 
@@ -590,18 +607,36 @@ let globalMasterSeragamOptions = ""; // Menyimpan cache daftar seragam agar hema
       }
 
       try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam`, {
+        // 1. Insert log ke transaksi_seragam (batch)
+        const resTx = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam`, {
           method: "POST",
           headers: supabaseHeaders,
           body: JSON.stringify(jsonPaketData)
         });
-        
-        if (res.ok) {
-          Swal.fire('Sukses Menyimpan!', `Berhasil mencatat ${jsonPaketData.length} jatah pengembalian seragam milik ${namaKaryawan}!`, 'success');
-          renderSeragamMasuk(); // Reset ulang form agar bersih kembali
-        } else {
-          throw new Error("Gagal menyuntikkan paket data transaksi massal ke Supabase.");
-        }
+        if (!resTx.ok) throw new Error("Gagal menyimpan log transaksi resign ke Supabase.");
+
+        // 2. Update stok_seragam per seragam_id
+        // — Layak: tambah stok_bagus (bisa dipakai lagi)
+        const updateLayakPromises = Object.entries(stokLayakMap).map(([seragamId, qty]) =>
+          fetch(`${SUPABASE_URL}/rest/v1/rpc/increment_stok`, {
+            method: "POST",
+            headers: supabaseHeaders,
+            body: JSON.stringify({ p_seragam_id: parseInt(seragamId), p_kolom: 'stok_bagus', p_qty: qty })
+          })
+        );
+        // — Tidak Layak: tambah stok_destroy
+        const updateDestroyPromises = Object.entries(stokDestroyMap).map(([seragamId, qty]) =>
+          fetch(`${SUPABASE_URL}/rest/v1/rpc/increment_stok`, {
+            method: "POST",
+            headers: supabaseHeaders,
+            body: JSON.stringify({ p_seragam_id: parseInt(seragamId), p_kolom: 'stok_destroy', p_qty: qty })
+          })
+        );
+
+        await Promise.all([...updateLayakPromises, ...updateDestroyPromises]);
+
+        Swal.fire('Sukses Menyimpan!', `Berhasil mencatat ${jsonPaketData.length} item pengembalian seragam ${namaKaryawan}! Stok gudang telah diperbarui.`, 'success');
+        renderSeragamMasuk();
       } catch (err) {
         Swal.fire('Gagal!', err.message, 'error');
       } finally {
@@ -655,8 +690,8 @@ let globalMasterSeragamOptions = ""; // Menyimpan cache daftar seragam agar hema
     async function renderPeminjamanEvent() {
       showLoader(true);
       try {
-        const resMaster = await fetch(`${SUPABASE_URL}/rest/v1/master_seragam?order=id.asc`, { headers: supabaseHeaders });
-        if(!resMaster.ok) throw new Error("Gagal memuat master_seragam.");
+        const resMaster = await fetch(`${SUPABASE_URL}/rest/v1/stok_seragam?order=id.asc`, { headers: supabaseHeaders });
+        if(!resMaster.ok) throw new Error("Gagal memuat stok_seragam.");
         const masterSeragam = await resMaster.json();
         let opsiSeragam = masterSeragam.map(m => `<option value="${m.id}">${m.nama_seragam} - ${m.gender} (${m.ukuran})</option>`).join('');
 
@@ -1143,6 +1178,649 @@ function downloadFilteredTxCSV() {
   };
   reader.readAsText(file);
 }
+
+    // ==========================================
+    // 7. MENU MASTER ASET KARYAWAN (master_aset_karyawan - Supabase BARU)
+    // ==========================================
+
+    const DROPDOWN_STATUS = ['AKTIF', 'RESIGN'];
+    const DROPDOWN_KEMEJA_JAS = [
+      'PRIA (S)', 'PRIA (M)', 'PRIA (L)', 'PRIA (XL)', 'PRIA (2XL)', 'PRIA (3XL)', 'PRIA (4XL)', 'PRIA (5XL)',
+      'WANITA (S)', 'WANITA (M)', 'WANITA (L)', 'WANITA (XL)', 'WANITA (2XL)', 'WANITA (3XL)', 'WANITA (4XL)', 'WANITA (5XL)'
+    ];
+    const DROPDOWN_KAOS_POLO = ['SIZE S', 'SIZE M', 'SIZE L', 'SIZE XL', 'SIZE 2XL', 'SIZE 3XL'];
+
+    function buildSelectOptions(options, selectedValue) {
+      return options.map(o => `<option value="${o}" ${o === selectedValue ? 'selected' : ''}>${o}</option>`).join('');
+    }
+
+    let _asetKaryawanData = []; // cache data untuk filter & download
+
+    function filterAsetKaryawan() {
+      const query = (document.getElementById('filterAset')?.value || '').toLowerCase().trim();
+      const filtered = query
+        ? _asetKaryawanData.filter(k =>
+            (k.nama_lengkap || '').toLowerCase().includes(query) ||
+            (k.departemen_store || '').toLowerCase().includes(query)
+          )
+        : _asetKaryawanData;
+      renderAsetRows(filtered);
+      document.getElementById('asetCount').textContent = filtered.length;
+    }
+
+    function renderAsetRows(data) {
+      const rows = data.map(k => `
+          <tr>
+            <td>${k.departemen_store || '-'}</td>
+            <td><strong>${k.nip || '-'}</strong></td>
+            <td>${k.nama_lengkap || '-'}</td>
+            <td>${k.posisi_kerja || '-'}</td>
+            <td>
+              <select class="form-select form-select-sm" onchange="patchAsetField('${k.nip}', 'status', this.value)">
+                ${buildSelectOptions(DROPDOWN_STATUS, k.status)}
+              </select>
+            </td>
+            <td>
+              <select class="form-select form-select-sm" onchange="patchAsetField('${k.nip}', 'kemeja', this.value)">
+                <option value="">- Pilih -</option>
+                ${buildSelectOptions(DROPDOWN_KEMEJA_JAS, k.kemeja)}
+              </select>
+            </td>
+            <td><input type="number" class="form-control form-control-sm" style="min-width:65px" value="${k.qty_kemeja ?? 0}" min="0" onchange="patchAsetField('${k.nip}', 'qty_kemeja', parseInt(this.value))"></td>
+            <td>
+              <select class="form-select form-select-sm" onchange="patchAsetField('${k.nip}', 'kaos_polo', this.value)">
+                <option value="">- Pilih -</option>
+                ${buildSelectOptions(DROPDOWN_KAOS_POLO, k.kaos_polo)}
+              </select>
+            </td>
+            <td><input type="number" class="form-control form-control-sm" style="min-width:65px" value="${k.qty_kaos_polo ?? 0}" min="0" onchange="patchAsetField('${k.nip}', 'qty_kaos_polo', parseInt(this.value))"></td>
+            <td>
+              <select class="form-select form-select-sm" onchange="patchAsetField('${k.nip}', 'jas_apt', this.value)">
+                <option value="">- Pilih -</option>
+                ${buildSelectOptions(DROPDOWN_KEMEJA_JAS, k.jas_apt)}
+              </select>
+            </td>
+            <td><input type="number" class="form-control form-control-sm" style="min-width:65px" value="${k.qty_jas_apt ?? 0}" min="0" onchange="patchAsetField('${k.nip}', 'qty_jas_apt', parseInt(this.value))"></td>
+            <td>
+              <select class="form-select form-select-sm" onchange="patchAsetField('${k.nip}', 'jas_ttk', this.value)">
+                <option value="">- Pilih -</option>
+                ${buildSelectOptions(DROPDOWN_KEMEJA_JAS, k.jas_ttk)}
+              </select>
+            </td>
+            <td><input type="number" class="form-control form-control-sm" style="min-width:65px" value="${k.qty_jas_ttk ?? 0}" min="0" onchange="patchAsetField('${k.nip}', 'qty_jas_ttk', parseInt(this.value))"></td>
+            <td>
+              <button class="btn btn-sm btn-outline-danger" onclick="hapusAsetKaryawan('${k.nip}', '${(k.nama_lengkap || '').replace(/'/g, "\\'")}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      document.getElementById('asetKaryawanBody').innerHTML = rows || '<tr><td colspan="14" class="text-center py-4 text-muted"><i class="bi bi-inbox fs-4 d-block mb-2"></i>Tidak ada data yang cocok.</td></tr>';
+      const countEl = document.getElementById('asetCount');
+      if (countEl) countEl.textContent = data.length;
+    }
+
+    function downloadAsetCSV() {
+      const query = (document.getElementById('filterAset')?.value || '').toLowerCase().trim();
+      const data = query
+        ? _asetKaryawanData.filter(k =>
+            (k.nama_lengkap || '').toLowerCase().includes(query) ||
+            (k.departemen_store || '').toLowerCase().includes(query)
+          )
+        : _asetKaryawanData;
+
+      if (!data.length) { Swal.fire('Info', 'Tidak ada data untuk diunduh.', 'info'); return; }
+
+      const headers = ['Departemen/Store','NIP','Nama Lengkap','Posisi Kerja','Status','Kemeja','QTY Kemeja','Kaos Polo','QTY Kaos Polo','Jas APT','QTY Jas APT','Jas TTK','QTY Jas TTK'];
+      const rows = data.map(k => [
+        k.departemen_store || '',
+        k.nip || '',
+        k.nama_lengkap || '',
+        k.posisi_kerja || '',
+        k.status || '',
+        k.kemeja || '',
+        k.qty_kemeja ?? 0,
+        k.kaos_polo || '',
+        k.qty_kaos_polo ?? 0,
+        k.jas_apt || '',
+        k.qty_jas_apt ?? 0,
+        k.jas_ttk || '',
+        k.qty_jas_ttk ?? 0,
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+
+      const csv = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const label = query ? `_filter_${query}` : '_semua';
+      a.download = `master_aset_karyawan${label}_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function renderMasterAsetKaryawan() {
+      showLoader(true);
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/master_aset_karyawan?order=id.asc`, { headers: supabaseHeaders });
+        if (!res.ok) throw new Error(`HTTP ${res.status} - Gagal memuat data dari tabel 'master_aset_karyawan'. Pastikan URL & Anon Key Supabase baru sudah diisi dengan benar.`);
+        const data = await res.json();
+        _asetKaryawanData = data;
+
+        document.getElementById('app').innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold mb-0"><i class="bi bi-people-fill me-2 text-primary"></i>Master Aset Karyawan</h3>
+            <button class="btn btn-primary" onclick="bukaModalTambahKaryawan()">
+              <i class="bi bi-person-plus-fill me-1"></i> Tambah Karyawan Baru
+            </button>
+          </div>
+
+          <div class="card shadow-sm border-0 bg-white mb-3 p-3">
+            <div class="row g-2 align-items-center">
+              <div class="col-md-6">
+                <div class="input-group">
+                  <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                  <input type="text" id="filterAset" class="form-control" placeholder="Cari nama personil atau cabang..." oninput="filterAsetKaryawan()">
+                  <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('filterAset').value=''; filterAsetKaryawan()"><i class="bi bi-x"></i></button>
+                </div>
+              </div>
+              <div class="col-md-auto ms-md-auto">
+                <button class="btn btn-outline-success" onclick="downloadAsetCSV()">
+                  <i class="bi bi-download me-1"></i> Download CSV
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card shadow-sm border-0 bg-white">
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                  <thead class="table-dark text-uppercase" style="font-size: 0.75rem;">
+                    <tr>
+                      <th class="ps-3">Departemen / Store</th>
+                      <th>NIP</th>
+                      <th>Nama Lengkap</th>
+                      <th>Posisi Kerja</th>
+                      <th>Status</th>
+                      <th>Kemeja</th>
+                      <th>QTY</th>
+                      <th>Kaos Polo</th>
+                      <th>QTY</th>
+                      <th>Jas APT</th>
+                      <th>QTY</th>
+                      <th>Jas TTK</th>
+                      <th>QTY</th>
+                      <th class="text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="asetKaryawanBody">
+                    <tr><td colspan="14" class="text-center py-4 text-muted"><i class="bi bi-arrow-clockwise fs-4 d-block mb-2"></i>Memuat data...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card-footer bg-light text-muted small py-2 px-3">
+              Menampilkan: <strong id="asetCount">${data.length}</strong> dari <strong>${data.length}</strong> karyawan. Perubahan dropdown & QTY tersimpan otomatis ke database.
+            </div>
+          </div>
+
+          <!-- MODAL TAMBAH KARYAWAN BARU -->
+          <div class="modal fade" id="modalTambahKaryawan" tabindex="-1" aria-labelledby="modalTambahLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                  <h5 class="modal-title fw-bold" id="modalTambahLabel"><i class="bi bi-person-plus-fill me-2"></i>Tambah Data Karyawan Baru</h5>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                      <label class="form-label fw-bold small">Departemen / Store <span class="text-danger">*</span></label>
+                      <input type="text" id="inputDepartemen" class="form-control" placeholder="Contoh: Store Menteng">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-bold small">NIP (Unik) <span class="text-danger">*</span></label>
+                      <input type="text" id="inputNIP" class="form-control" placeholder="Contoh: 10021">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-bold small">Nama Lengkap <span class="text-danger">*</span></label>
+                      <input type="text" id="inputNamaLengkap" class="form-control" placeholder="Contoh: ANISA RAHMA">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-bold small">Posisi Kerja <span class="text-danger">*</span></label>
+                      <input type="text" id="inputPosisiKerja" class="form-control" placeholder="Contoh: Apoteker">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-bold small">Status</label>
+                      <select id="inputStatus" class="form-select">
+                        ${buildSelectOptions(DROPDOWN_STATUS, 'AKTIF')}
+                      </select>
+                    </div>
+                  </div>
+                  <hr>
+                  <p class="fw-bold text-muted small mb-3"><i class="bi bi-shirt-fill me-1"></i> DATA ASET SERAGAM (Opsional, bisa diisi belakangan)</p>
+                  <div class="row g-3">
+                    <div class="col-md-8">
+                      <label class="form-label fw-bold small">Kemeja</label>
+                      <select id="inputKemeja" class="form-select">
+                        <option value="">- Pilih Ukuran -</option>
+                        ${buildSelectOptions(DROPDOWN_KEMEJA_JAS, '')}
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label fw-bold small">QTY Kemeja</label>
+                      <input type="number" id="inputQtyKemeja" class="form-control" value="0" min="0">
+                    </div>
+                    <div class="col-md-8">
+                      <label class="form-label fw-bold small">Kaos Polo</label>
+                      <select id="inputKaosPolo" class="form-select">
+                        <option value="">- Pilih Ukuran -</option>
+                        ${buildSelectOptions(DROPDOWN_KAOS_POLO, '')}
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label fw-bold small">QTY Kaos Polo</label>
+                      <input type="number" id="inputQtyKaos" class="form-control" value="0" min="0">
+                    </div>
+                    <div class="col-md-8">
+                      <label class="form-label fw-bold small">Jas APT</label>
+                      <select id="inputJasAPT" class="form-select">
+                        <option value="">- Pilih Ukuran -</option>
+                        ${buildSelectOptions(DROPDOWN_KEMEJA_JAS, '')}
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label fw-bold small">QTY Jas APT</label>
+                      <input type="number" id="inputQtyJasAPT" class="form-control" value="0" min="0">
+                    </div>
+                    <div class="col-md-8">
+                      <label class="form-label fw-bold small">Jas TTK</label>
+                      <select id="inputJasTTK" class="form-select">
+                        <option value="">- Pilih Ukuran -</option>
+                        ${buildSelectOptions(DROPDOWN_KEMEJA_JAS, '')}
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label fw-bold small">QTY Jas TTK</label>
+                      <input type="number" id="inputQtyJasTTK" class="form-control" value="0" min="0">
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                  <button type="button" class="btn btn-primary fw-bold" onclick="simpanKaryawanBaru()">
+                    <i class="bi bi-save me-1"></i> Simpan Data Karyawan
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Render baris tabel awal
+        renderAsetRows(_asetKaryawanData);
+
+        // Inisialisasi modal Bootstrap
+        const modalEl = document.getElementById('modalTambahKaryawan');
+        if (modalEl && !bootstrap.Modal.getInstance(modalEl)) {
+          new bootstrap.Modal(modalEl);
+        }
+
+      } catch (err) {
+        console.error(err);
+        showError(err.message);
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    function bukaModalTambahKaryawan() {
+      const modalEl = document.getElementById('modalTambahKaryawan');
+      if (!modalEl) { renderMasterAsetKaryawan().then(() => bukaModalTambahKaryawan()); return; }
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      // Reset form
+      ['inputDepartemen','inputNIP','inputNamaLengkap','inputPosisiKerja'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      ['inputQtyKemeja','inputQtyKaos','inputQtyJasAPT','inputQtyJasTTK'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '0';
+      });
+      ['inputKemeja','inputKaosPolo','inputJasAPT','inputJasTTK'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      const statusEl = document.getElementById('inputStatus');
+      if (statusEl) statusEl.value = 'AKTIF';
+      modal.show();
+    }
+
+    async function simpanKaryawanBaru() {
+      const nip = document.getElementById('inputNIP').value.trim();
+      const departemen = document.getElementById('inputDepartemen').value.trim();
+      const nama = document.getElementById('inputNamaLengkap').value.trim();
+      const posisi = document.getElementById('inputPosisiKerja').value.trim();
+
+      if (!nip) { Swal.fire('Validasi Gagal!', 'NIP tidak boleh kosong. NIP adalah identitas unik karyawan.', 'warning'); return; }
+      if (!nama) { Swal.fire('Validasi Gagal!', 'Nama Lengkap tidak boleh kosong.', 'warning'); return; }
+
+      const payload = {
+        nip: nip,
+        departemen_store: departemen,
+        nama_lengkap: nama,
+        posisi_kerja: posisi,
+        status: document.getElementById('inputStatus').value,
+        kemeja: document.getElementById('inputKemeja').value || null,
+        qty_kemeja: parseInt(document.getElementById('inputQtyKemeja').value) || 0,
+        kaos_polo: document.getElementById('inputKaosPolo').value || null,
+        qty_kaos_polo: parseInt(document.getElementById('inputQtyKaos').value) || 0,
+        jas_apt: document.getElementById('inputJasAPT').value || null,
+        qty_jas_apt: parseInt(document.getElementById('inputQtyJasAPT').value) || 0,
+        jas_ttk: document.getElementById('inputJasTTK').value || null,
+        qty_jas_ttk: parseInt(document.getElementById('inputQtyJasTTK').value) || 0,
+      };
+
+      showLoader(true);
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/master_aset_karyawan`, {
+          method: "POST",
+          headers: { ...supabaseHeaders, "Prefer": "return=minimal" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const modalEl = document.getElementById('modalTambahKaryawan');
+          if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+          Swal.fire('Berhasil!', `Data karyawan ${nama} berhasil ditambahkan!`, 'success');
+          renderMasterAsetKaryawan();
+        } else {
+          const errData = await res.json();
+          throw new Error(errData.message || `HTTP ${res.status} - Gagal menyimpan data.`);
+        }
+      } catch (err) {
+        Swal.fire('Gagal!', err.message, 'error');
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    async function patchAsetField(nip, field, value) {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/master_aset_karyawan?nip=eq.${encodeURIComponent(nip)}`, {
+          method: "PATCH",
+          headers: { ...supabaseHeaders, "Prefer": "return=minimal" },
+          body: JSON.stringify({ [field]: value })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || `Gagal update field ${field}.`);
+        }
+        // Toast sukses kecil tanpa popup besar
+        const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 1500, timerProgressBar: true });
+        Toast.fire({ icon: 'success', title: `${field.replace(/_/g,' ')} tersimpan` });
+      } catch (err) {
+        Swal.fire('Gagal Menyimpan!', err.message, 'error');
+      }
+    }
+
+    async function hapusAsetKaryawan(nip, nama) {
+      const result = await Swal.fire({
+        title: 'Hapus Data Karyawan?',
+        html: `Data aset <strong>${nama}</strong> (NIP: ${nip}) akan dihapus permanen dari database.<br><br>Tindakan ini tidak bisa dibatalkan!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Ya, Hapus!',
+        cancelButtonText: 'Batal'
+      });
+      if (!result.isConfirmed) return;
+
+      showLoader(true);
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/master_aset_karyawan?nip=eq.${encodeURIComponent(nip)}`, {
+          method: "DELETE",
+          headers: supabaseHeaders
+        });
+        if (res.ok) {
+          Swal.fire('Terhapus!', `Data karyawan ${nama} berhasil dihapus.`, 'success');
+          renderMasterAsetKaryawan();
+        } else {
+          throw new Error(`HTTP ${res.status} - Gagal menghapus data karyawan.`);
+        }
+      } catch (err) {
+        Swal.fire('Gagal!', err.message, 'error');
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    // ==========================================
+    // 8. MENU SERAGAM DESTROY
+    // Memotong stok_destroy di stok_seragam dan mencatat log transaksi
+    // ==========================================
+    async function renderSeragamDestroy() {
+      showLoader(true);
+      try {
+        // Cukup fetch dari stok_seragam saja — semua kolom (nama, gender, ukuran, stok_destroy) sudah ada di sini
+        const resStok = await fetch(`${SUPABASE_URL}/rest/v1/stok_seragam?order=id.asc`, { headers: supabaseHeaders });
+        if (!resStok.ok) throw new Error(`HTTP ${resStok.status} - Gagal memuat data dari tabel 'stok_seragam'.`);
+
+        const stokList = await resStok.json();
+
+        // Item yang punya stok_destroy > 0 = menunggu pemusnahan
+        const itemDestroy = stokList.filter(s => (s.stok_destroy || 0) > 0);
+
+        // Dropdown opsi: tampilkan semua item, dengan info stok destroy
+        const opsiSeragam = stokList.map(s =>
+          `<option value="${s.id}" data-max="${s.stok_destroy || 0}">
+            ${s.nama_seragam} - ${s.gender} (${s.ukuran}) | Stok Tidak Layak: ${s.stok_destroy || 0} pcs
+          </option>`
+        ).join('');
+
+        const rowsDestroy = itemDestroy.length > 0
+          ? itemDestroy.map(s => `
+            <tr>
+              <td class="ps-3"><strong>#${s.id}</strong></td>
+              <td>${s.nama_seragam}</td>
+              <td><span class="badge bg-secondary">${s.gender}</span></td>
+              <td>${s.ukuran}</td>
+              <td class="fw-bold text-danger">${s.stok_destroy} pcs</td>
+              <td>
+                <button class="btn btn-sm btn-danger"
+                  onclick="prosesDestroyItem(${s.id}, '${s.nama_seragam} - ${s.gender} (${s.ukuran})', ${s.stok_destroy})">
+                  <i class="bi bi-fire me-1"></i> Proses Destroy
+                </button>
+              </td>
+            </tr>`).join('')
+          : `<tr><td colspan="6" class="text-center py-4 text-muted">
+              <i class="bi bi-check-circle text-success fs-4 d-block mb-2"></i>
+              Tidak ada stok seragam yang perlu di-destroy saat ini.
+            </td></tr>`;
+
+        document.getElementById('app').innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold mb-0 text-danger"><i class="bi bi-trash3-fill me-2"></i>Seragam Destroy / Pemusnahan</h3>
+          </div>
+
+          <!-- Form Input Manual Destroy -->
+          <div class="card border-0 shadow-sm bg-white mb-4">
+            <div class="card-header bg-danger text-white fw-bold">
+              <i class="bi bi-box-arrow-right me-2"></i>Form Pemusnahan Seragam Tidak Layak
+            </div>
+            <div class="card-body p-4">
+              <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                  <label class="form-label fw-bold small">Pilih Jenis Seragam</label>
+                  <select id="destroySeragamId" class="form-select" onchange="updateMaxDestroy(this)">
+                    <option value="">-- Pilih Item Seragam --</option>
+                    ${opsiSeragam}
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label fw-bold small">Jumlah Destroy (Pcs)</label>
+                  <input type="number" id="destroyJumlah" class="form-control" min="1" value="1">
+                  <small id="destroyMaxInfo" class="text-muted"></small>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-bold small">Keterangan / Alasan</label>
+                  <input type="text" id="destroyKeterangan" class="form-control" placeholder="Contoh: Musnah batch Juni 2026">
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-danger w-100 fw-bold" onclick="simpanDestroy()">
+                    <i class="bi bi-fire me-1"></i> Eksekusi Destroy
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabel stok destroy yang menunggu -->
+          <div class="card border-0 shadow-sm bg-white">
+            <div class="card-header bg-light fw-bold text-dark">
+              <i class="bi bi-list-ul me-2"></i>Daftar Stok Tidak Layak Menunggu Pemusnahan
+              <span class="badge bg-danger ms-2">${itemDestroy.length} item</span>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-dark text-uppercase small">
+                    <tr>
+                      <th class="ps-3">Kode</th>
+                      <th>Nama Seragam</th>
+                      <th>Gender</th>
+                      <th>Ukuran</th>
+                      <th>Stok Destroy</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>${rowsDestroy}</tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card-footer bg-light text-muted small">
+              Stok destroy terisi otomatis saat karyawan resign mengembalikan seragam dengan kondisi <strong>Tidak Layak</strong>.
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        console.error(err);
+        showError(err.message);
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    function updateMaxDestroy(selectEl) {
+      const max = selectEl.options[selectEl.selectedIndex]?.dataset?.max || 0;
+      document.getElementById('destroyJumlah').max = max;
+      document.getElementById('destroyMaxInfo').textContent = max > 0 ? `Maks: ${max} pcs` : '';
+    }
+
+    async function simpanDestroy() {
+      const seragamId   = parseInt(document.getElementById('destroySeragamId').value);
+      const jumlah      = parseInt(document.getElementById('destroyJumlah').value);
+      const keterangan  = document.getElementById('destroyKeterangan').value.trim() || 'Pemusnahan seragam tidak layak';
+      const maxDestroy  = parseInt(document.getElementById('destroySeragamId').options[document.getElementById('destroySeragamId').selectedIndex]?.dataset?.max || 0);
+
+      if (!seragamId)        { Swal.fire('Peringatan!', 'Pilih jenis seragam terlebih dahulu.', 'warning'); return; }
+      if (!jumlah || jumlah < 1) { Swal.fire('Peringatan!', 'Jumlah destroy harus minimal 1 pcs.', 'warning'); return; }
+      if (jumlah > maxDestroy)   { Swal.fire('Tidak Bisa!', `Jumlah destroy (${jumlah}) melebihi stok tidak layak yang tersedia (${maxDestroy} pcs).`, 'error'); return; }
+
+      const confirm = await Swal.fire({
+        title: 'Konfirmasi Pemusnahan',
+        html: `<strong>${jumlah} pcs</strong> seragam akan dimusnahkan permanen.<br>
+               Stok tidak layak akan berkurang sebesar ${jumlah} pcs.<br><br>
+               <span class="text-danger fw-bold">Tindakan ini tidak dapat dibatalkan!</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Ya, Musnahkan!',
+        cancelButtonText: 'Batal'
+      });
+      if (!confirm.isConfirmed) return;
+
+      showLoader(true);
+      try {
+        // 1. Catat log transaksi KELUAR - Destroy
+        const resTx = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam`, {
+          method: "POST",
+          headers: supabaseHeaders,
+          body: JSON.stringify({
+            tipe_transaksi: "KELUAR",
+            jenis_sumber: "Destroy",
+            seragam_id: seragamId,
+            jumlah: jumlah,
+            keterangan: keterangan
+          })
+        });
+        if (!resTx.ok) throw new Error("Gagal mencatat log transaksi destroy.");
+
+        // 2. Kurangi stok_destroy di tabel stok_seragam
+        const resStok = await fetch(`${SUPABASE_URL}/rest/v1/rpc/decrement_stok_destroy`, {
+          method: "POST",
+          headers: supabaseHeaders,
+          body: JSON.stringify({ p_seragam_id: seragamId, p_qty: jumlah })
+        });
+        if (!resStok.ok) throw new Error("Log destroy tersimpan, tapi gagal update stok_seragam. Periksa function RPC 'decrement_stok_destroy'.");
+
+        Swal.fire('Berhasil Dimusnahkan!', `${jumlah} pcs seragam berhasil di-destroy dan stok diperbarui.`, 'success');
+        renderSeragamDestroy();
+      } catch (err) {
+        Swal.fire('Gagal!', err.message, 'error');
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    async function prosesDestroyItem(seragamId, namaSeragam, maxStok) {
+      const { value: jumlah } = await Swal.fire({
+        title: `Destroy: ${namaSeragam}`,
+        html: `Stok tidak layak tersedia: <strong>${maxStok} pcs</strong><br>Berapa pcs yang akan dimusnahkan?`,
+        input: 'number',
+        inputAttributes: { min: 1, max: maxStok, step: 1 },
+        inputValue: maxStok,
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Musnahkan',
+        cancelButtonText: 'Batal',
+        inputValidator: (v) => {
+          if (!v || v < 1)      return 'Jumlah harus minimal 1!';
+          if (v > maxStok)      return `Maks ${maxStok} pcs!`;
+        }
+      });
+      if (!jumlah) return;
+
+      showLoader(true);
+      try {
+        const resTx = await fetch(`${SUPABASE_URL}/rest/v1/transaksi_seragam`, {
+          method: "POST",
+          headers: supabaseHeaders,
+          body: JSON.stringify({
+            tipe_transaksi: "KELUAR",
+            jenis_sumber: "Destroy",
+            seragam_id: seragamId,
+            jumlah: parseInt(jumlah),
+            keterangan: `Pemusnahan batch dari daftar stok tidak layak: ${namaSeragam}`
+          })
+        });
+        if (!resTx.ok) throw new Error("Gagal mencatat log transaksi destroy.");
+
+        const resStok = await fetch(`${SUPABASE_URL}/rest/v1/rpc/decrement_stok_destroy`, {
+          method: "POST",
+          headers: supabaseHeaders,
+          body: JSON.stringify({ p_seragam_id: seragamId, p_qty: parseInt(jumlah) })
+        });
+        if (!resStok.ok) throw new Error("Log tersimpan tapi gagal update stok_destroy. Cek RPC 'decrement_stok_destroy'.");
+
+        Swal.fire('Berhasil!', `${jumlah} pcs ${namaSeragam} berhasil dimusnahkan.`, 'success');
+        renderSeragamDestroy();
+      } catch (err) {
+        Swal.fire('Gagal!', err.message, 'error');
+      } finally {
+        showLoader(false);
+      }
+    }
 
     window.onload = function() { 
       renderDashboard(); 
